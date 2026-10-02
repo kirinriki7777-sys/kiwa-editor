@@ -1,0 +1,24 @@
+TextMate bundle license
+
+The grammars for Groovy and HTML come from the TextMate bundles
+textmate/groovy.tmbundle and textmate/html.tmbundle. The README of each of
+these repositories states the following license for the files in it (copied
+verbatim; the README names no copyright holder):
+
+    Permission to copy, use, modify, sell and distribute this
+    software is granted. This software is provided "as is" without
+    express or implied warranty, and with no claim as to its
+    suitability for any purpose.
+
+The same README makes an exception for files that carry their own license
+information, or that have an accompanying "-license" file. The two grammar
+files used here (Syntaxes/Groovy.tmLanguage and Syntaxes/HTML.plist) have
+neither at the commits listed in THIRD_PARTY_NOTICES.md.
+
+(The YAML grammar from textmate/yaml.tmbundle is not under this license: it
+has an accompanying Syntaxes/YAML-license.txt, which is the MIT License. See
+THIRD_PARTY_NOTICES.md.)
+
+Sources:
+  https://github.com/textmate/groovy.tmbundle/blob/master/README.mdown
+  https://github.com/textmate/html.tmbundle/blob/master/README.mdown

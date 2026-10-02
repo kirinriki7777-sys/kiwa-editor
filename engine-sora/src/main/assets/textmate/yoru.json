@@ -1,0 +1,215 @@
+{
+  "name": "Kiwa Yoru",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1f242d",
+    "editor.foreground": "#d8dee9",
+    "editorCursor.foreground": "#88c0d0",
+    "editor.selectionBackground": "#3b4252",
+    "editor.lineHighlightBackground": "#262c37",
+    "editorLineNumber.foreground": "#8b95a7",
+    "editorLineNumber.activeForeground": "#88c0d0",
+    "editorWhitespace.foreground": "#343b48",
+    "editorIndentGuide.background": "#343b48",
+    "editorIndentGuide.activeBackground": "#8b95a7",
+    "editor.findMatchBackground": "#3b4252",
+    "editor.wordHighlightBackground": "#262c37",
+    "editor.wordHighlightStrongBackground": "#3b4252"
+  },
+  "tokenColors": [
+    {
+      "settings": {
+        "foreground": "#d8dee9"
+      }
+    },
+    {
+      "name": "Comments",
+      "scope": [
+        "comment",
+        "punctuation.definition.comment"
+      ],
+      "settings": {
+        "foreground": "#7b8699",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "Keywords",
+      "scope": [
+        "keyword",
+        "storage",
+        "storage.modifier",
+        "keyword.control"
+      ],
+      "settings": {
+        "foreground": "#b48ead"
+      }
+    },
+    {
+      "name": "Operators",
+      "scope": [
+        "keyword.operator",
+        "punctuation"
+      ],
+      "settings": {
+        "foreground": "#c7ced9"
+      }
+    },
+    {
+      "name": "Types",
+      "scope": [
+        "storage.type",
+        "support.type",
+        "entity.name.type",
+        "entity.name.class",
+        "entity.other.inherited-class",
+        "support.class",
+        "entity.name.namespace"
+      ],
+      "settings": {
+        "foreground": "#8fbcbb"
+      }
+    },
+    {
+      "name": "Functions",
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "meta.function-call entity.name.function"
+      ],
+      "settings": {
+        "foreground": "#88c0d0"
+      }
+    },
+    {
+      "name": "Variables",
+      "scope": [
+        "variable",
+        "variable.parameter",
+        "support.variable",
+        "meta.definition.variable"
+      ],
+      "settings": {
+        "foreground": "#d8dee9"
+      }
+    },
+    {
+      "name": "Constants",
+      "scope": [
+        "constant",
+        "constant.numeric",
+        "constant.language",
+        "constant.character",
+        "support.constant",
+        "variable.language"
+      ],
+      "settings": {
+        "foreground": "#d08770"
+      }
+    },
+    {
+      "name": "Strings",
+      "scope": [
+        "string",
+        "string.quoted",
+        "string.template"
+      ],
+      "settings": {
+        "foreground": "#a3be8c"
+      }
+    },
+    {
+      "name": "Escapes",
+      "scope": [
+        "constant.character.escape",
+        "string.regexp"
+      ],
+      "settings": {
+        "foreground": "#8fbcbb"
+      }
+    },
+    {
+      "name": "Tags",
+      "scope": [
+        "entity.name.tag",
+        "meta.tag"
+      ],
+      "settings": {
+        "foreground": "#b48ead"
+      }
+    },
+    {
+      "name": "Attributes",
+      "scope": [
+        "entity.other.attribute-name",
+        "support.type.property-name",
+        "meta.property-name"
+      ],
+      "settings": {
+        "foreground": "#88c0d0"
+      }
+    },
+    {
+      "name": "Headings",
+      "scope": [
+        "markup.heading",
+        "entity.name.section"
+      ],
+      "settings": {
+        "foreground": "#88c0d0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Bold",
+      "scope": "markup.bold",
+      "settings": {
+        "foreground": "#d8dee9",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "Italic",
+      "scope": "markup.italic",
+      "settings": {
+        "foreground": "#d8dee9",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "Raw",
+      "scope": [
+        "markup.inline.raw",
+        "markup.raw",
+        "markup.fenced_code"
+      ],
+      "settings": {
+        "foreground": "#a3be8c"
+      }
+    },
+    {
+      "name": "Links",
+      "scope": [
+        "meta.link",
+        "markup.underline.link"
+      ],
+      "settings": {
+        "foreground": "#88c0d0"
+      }
+    },
+    {
+      "name": "Quotes",
+      "scope": "markup.quote",
+      "settings": {
+        "foreground": "#7b8699"
+      }
+    },
+    {
+      "name": "Invalid",
+      "scope": "invalid",
+      "settings": {
+        "foreground": "#e5484d"
+      }
+    }
+  ]
+}

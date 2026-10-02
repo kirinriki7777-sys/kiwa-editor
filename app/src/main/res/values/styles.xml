@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      システムバーの色をここで決めない。端から端まで描く既定ではアプリの地がそのまま透けるので、
+      配色は実行時に Palette が決め、アイコンの明暗も setSystemBarsAppearance で合わせる。
+      ここに navigationBarColor を書いていたせいで、暗い配色にしてもナビゲーションバーの帯だけ
+      明るいまま残り、「戻る／ホーム」が地と同化して見えなくなった（実機で確認）。
+
+      windowBackground は既定の配色（暗い）に合わせる。起動の一瞬だけ白が出るのを防ぐため。
+    -->
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">#1E1F22</item>
+    </style>
+</resources>

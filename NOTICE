@@ -1,0 +1,12 @@
+Kiwa
+Copyright 2026 kirinriki7777-sys
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes third-party software under their own licenses. The list, with
+sources and copyright notices, and the full license texts are in
+third_party/ (also readable in the app: 設定 (Settings) > このアプリについて (About) > ライセンス (Licenses)).
+
+None of the bundled third-party jars and aars ships a META-INF/NOTICE file,
+so there is nothing further to reproduce here under section 4(d) of the
+Apache License.

@@ -1,0 +1,27 @@
+Kiwa is a code editor for Android tablets where Japanese input and hardware keyboards just work.
+
+<b>The user interface is in Japanese only.</b>
+
+Most Android code editors break in small ways once an input method is involved: the text being converted is not highlighted, Ctrl+Z replays every step of a conversion, Tab indents half-typed text, or a hardware keyboard disables conversion completely. Kiwa is built around fixing exactly that.
+
+Kiwa also never changes the bytes of a file you did not edit. Encoding, BOM and line endings stay as they were.
+
+<b>Features</b>
+<ul>
+<li>Tabs, a file tree and a menu bar</li>
+<li>Command palette: files by name, commands with &gt;, go to line with :</li>
+<li>Find and replace with regular expressions, and search across a folder</li>
+<li>Syntax highlighting for 18 languages (TextMate grammars)</li>
+<li>UTF-8, Shift_JIS, EUC-JP, ISO-2022-JP, UTF-16 and ISO-8859-1, keeping BOMs and line endings</li>
+<li>A symbol key row for brackets and other hard-to-type characters</li>
+<li>Eight colour themes</li>
+<li>Files anywhere on internal storage and SD cards</li>
+</ul>
+
+<b>Privacy</b>
+Kiwa has no network permission. It collects and sends nothing. It asks for All files access only to open files where they are.
+
+<b>AI-assisted development</b>
+Most of the code was written by AI models (Claude, GPT, Gemini) under the maintainer's direction. The icon is based on an image generated with Gemini.
+
+Kiwa is open source under the Apache License 2.0 and uses Sora Editor (LGPL-2.1-or-later).

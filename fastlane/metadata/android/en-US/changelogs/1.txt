@@ -1,0 +1,5 @@
+First public release.
+
+- Japanese input that keeps working with hardware keyboards: conversion highlight, one undo step per conversion, no key bindings while composing
+- Saves without touching encoding, BOM or line endings
+- Command palette, folder search, 18 languages, eight themes

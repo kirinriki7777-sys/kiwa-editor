@@ -1,0 +1,11 @@
+.gradle/
+.gradle-bootstrap/
+.idea/
+local.properties
+**/build/
+*.iml
+*.keystore
+logs/
+*.jks
+__pycache__/
+.kotlin/

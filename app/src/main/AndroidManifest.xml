@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 母艦と Syncthing で共有するフォルダを直接読み書きする。
+         SAF ではなくこちらを採った理由は file/StorageAccess.kt に書いてある。 -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Kiwa"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- 設定は別 Activity。エディタが居ないので IME と焦点の取り合いが起きない。
+             configChanges を本体と揃えてあるのは、配色を変えた直後に端末の明暗が
+             切り替わっても画面を作り直させないため。 -->
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
+            android:parentActivityName=".MainActivity"
+            android:exported="false" />
+    </application>
+</manifest>

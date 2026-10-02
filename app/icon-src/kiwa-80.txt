@@ -1,0 +1,102 @@
+; Kiwa のアイコン ── 80x80 のドット絵。
+; 元絵 = source-1024.jpg（1024x1024）。1ドット = 12.8px の格子で吸い出し、
+; 下の14色へ寄せたもの。**ここが正本**で、mipmap-* は tools/make-icon.py が作る。
+;
+; 上半分 = 色の表。「文字 いろ 役」の3つ。役が bg のものは丸い枠と地の紺で、
+; adaptive icon では**下の層が作り直す**ので絵の層からは抜ける。
+; 「--」の下が絵。
+. 09295A bg
+b 14427D bg
+, 091731 bg
+B 2461A4 bg
+# 000000 fg
+W FEFEFE fg
+w D6DADF fg
+g 6E6E6E fg
+O FB8718 fg
+o EE9400 fg
+d EF630B fg
+Y FAC306 fg
+y FBDF5F fg
+h FCD1A7 fg
+--
+WWWWWWWWWWBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWWWWWWWWWW
+WWWWWWWWWWBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWWWWWWWWWW
+WWWWWWBBBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBBBWWWWWW
+WWWWWWBBBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBBBWWWWWW
+WWWWBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBWWWW
+WWWWBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBWWWW
+WWBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBWW
+WWBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBWW
+WWBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBWW
+WWBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBWW
+..BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB..
+..BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB..
+..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..
+..bbbbbbbbbbbbbbbbbb##########bbbbbbbbOObbbbbb########bbOObbbbbbbbbbbbbbbbbbbb,.
+..bbbbbbbbbbbbbbbbbb##########bbbbbbbbOObbbbbb########bbOObbbbbbbbbbbbbbbbbbbb..
+..bbbbbbbbbbbbbbbb####WWWWWWWW##bbbbOObbbbbb##OOOOOOOO##bbOObbbbbbbbbbbbbbbbbb,.
+..bbbbbbbbbbbbbbbb####WWWWWWWW##bbbbOObbbbbb##OOOOOOOO##bbOObbbbbbbbbbbbbbbbbb.,
+,.bbbbbbbbbbbbbbbb####OOOOOOWW##bbbbOObbbb##OOOOOOOOdd##bbOObbbbbbbbbbbbbbbbbb..
+,.bbbbbbbbbbbbbbbb####OOOOOOWW##bbbbOObbbb##OOOOOOOOdd##bbOObbbbbbbbbbbbbbbbbb..
+..bbbbbbbbbbbbbbbb####OOOOOOWW##bbOObbbbbb##OOOOOOOOdd##bbOObbbbbbbbbbbbbbbbbb.,
+..bbbb..bbbbbb..bb####OOOOOOWW##bbOO..bb##OOhhOOOOOO####bbbbOO..bbbbbb..bb..bb,,
+..bbbb..bbbbbb..bb####OOOOOOWW##bbbbOObb##OOhhOOOOOO####bbbbOO..bbbbbb..bb..bb..
+....bbbb..bbbbbb..####OOOOOOWW##bb..OO..##hhOOOOOOdd##bb..OObbbb..bbbbbb..bbbb,,
+,...bbbb..bbbbbb..####OOOOOOWW##bb..OO..##hhOOOOOOdd##bb..OObbbb..bbbbbb..bbbb.,
+..bbbbbbbbbbbbbbbb####OOOOOOWW##bbbbOO##hhOOOOOOdd##bbbbbbOObbbbbbbbbbbbbbbbbb..
+.,bbbbbbbb..bbbbbb####OOOOOOWW##bbbbbb##hhOOOOOOdd##bbbbbbOO..bbbbbb..bbbbbb....
+.,bbbbbbbb..bbbbbb####OOOOOOWW##bbbbbb##hhOOOOOOdd##bbbbbbOO..bbbbbb..bbbbbb....
+..bb..bb..bb..bb..####OOOOOOWW##..bb##hhOOOOOOdd##..bb..OO..bb..bb..bb..bb..bb,.
+..bb..bb..bb..bb..####OOOOOOWW##..bb##hhOOOOOOdd##..bb..OO..bb..bb..bb..bb..bb,.
+..bbbbbbbbbbbbbbbb####OOOOOOWW##bb##hhOOOOOOdd####bbbbbbbbbbbbbbbbbbbbbbbbbbbb.,
+.,..bb..bb..bb..bb####OOOOOOWW##bb##hhOOOOOOdd######bbbbbbbbbb..bbbbbb..bb..bb..
+.,..bb..bb..bb..bb####OOOOOOWW####hhOOOOOOdd##########bbbbbbbb..bbbbbb..bb..bb..
+..bb..bb..bb..bb..####OOOOOOWW####hhOOOOOOdd##########..bb....bb..bb..bb..bb..,.
+..bb..bb..bb..bb..####OOOOOOWW##ggyyOOOOOOgggggggg####,,bb....bb..bb..bb..bb..,,
+.,..bb..bb..bb..bb####OOOOOOWW##hhOOOOOOdd##wwWWWW######..bbbb..bb..bb..bb..bb,,
+.,..bb..bb..bb..bb####OOOOOOWW##hhOOOOOOdd##wwWWWW######..bbbb..bb..bb..bb..bb.,
+..bb..bb..bb..bb..####OOOOOOOOOOOOOOOOdd####WW####WW####bb....bb..bb..bb..bb..,,
+..bb..bb..bb..bb..####OOOOOOOOOOOOOOOOdd####WW##g#WW####bb....bb..bb..bb..bb..,.
+,,..bb..bb..bb..bb####OOOOOOOOOOOOOOOO####wwWW####WWYYYY####bb..bb..bb..bb..bb,.
+,,..bb..bb..bb..bb####OOOOOOOOOOOOOOOO####wwWW####WWYYYYYY##bb..bb..bb..bb..bb,.
+.,bb..bb..bb..bb..####OOOOOOOOOOOOOOOO####wwWWWWWWWWoooooo##..bb..bb..bb..bb..,.
+..bb..bb..bb..bb..####OOOOOOOOOOOOOOOO####wwWWWWWWWWoooo####..bb..bb..bb..bb..,,
+,,..bb..bb..bb..bb####OOOOOOOOOOOOOOOOdd####WWWWWWWW####bb..bb..bb..bb..bb..bb,,
+.,..bb..bb..bb..bb####OOOOOOOOOOOOOOOOdd####WWWWWWWW####bb..bb..bb..bb..bb..bb,,
+.,bb..bb..bb..bb..####OOOOdd####ddOOOOOOdd####WWWWWW####..bb..bb..bb..bb..bb..,,
+,.bb..bb..bb..bb..####OOOOdd####ddOOOOOOdd####WWWWWW####..bb..bb..bb..bb..bb..,,
+,,..bb..bb..bb..bb####OOOOdd######ddOOOOOOdd##wwWWWWWW##bb..bb..bb..bb..bb..bb,,
+,,..bb..bb..bb..bb####OOOOdd######ddOOOOOOdd##wwWWWWWW##bb..bb..bb..bb..bb..bb,,
+.,..bb..bbbb....bb####OOOOdd##ww####ddOOOOOOdd##wwWWWW####bb....bbbb....bb..bb,,
+.,..bb..bbbb....bb####OOOOdd##ww####ddOOOOOOdd##wwWWWW####bb....bbbb....bb..bb,,
+,,....bb..bb..bb..####OOOOdd##WWWWww##ddOOOOOOdd##wwWWWW##bb..bb..bb..bb..bb..,,
+,,....bb..bb..bb..####OOOOdd##WWWWww##ddOOOOOOdd##wwWWWW##bb..bb..bb..bb..bb..,,
+,,..bb..bb..bb..bb####dddddd##WWWWWWww##OOOOOOOOdd##wwWW##..bb..bb..bb..bb..bb,,
+,,..bb..bb..bb..bb####dddddd##WWWWWWww##OOOOOOOOdd##wwWW##..bb..bb..bb..bb..bb,,
+,,bb..........bb..########dd##WWWWWWWW##ddOOOOOOOOdd######....bb......bb......,,
+,,bb..........bb..########dd##WWWWWWWW##ddOOOOOOOOdd######....bb......bb......,,
+,,....bb....bb..bb####yyYY####WWWWWWWWWW##ddOOOOdd##yy####..bb..bb..bb....bb..,,
+,,....bb....bb..bb####yyYY####WWWWWWWWWW##ddOOOOdd##yy####..bb..bb..bb....bb..,,
+,,bb......bb......##yyYYYYYY##wwWWWWWWWWWW##dddd##yyYYYYYY####....bb........bb,,
+,,bb......bb......##yyYYYYYY##wwWWWWWWWWWW##dddd##yyYYYYYY####....bb........bb,,
+,,..............##yyYYYYYYYYYY##wwWWWWWWWWww####YYYYYYYYYYYYyy##....bb........,,
+,,..............##yyYYYYYYYYYY##wwWWWWWWWWww####YYYYYYYYYYYYyy##....bb........,,
+,,..............##YYYYYYYYYYYYYY##wwwwwwwwww####YYYYYYYYYYYYoo##..............,,
+,,..............##YYYYYYYYYYYYYY##wwwwwwwwww####YYYYYYYYYYYYoo##..............,,
+,,..............####ooooooYYYYoo##############ooYYYYYYoooooo##................,,
+,,..............####ooooooYYYYoo##############ooYYYYYYoooooo##................,,
+,,................########oooo####............##oooooo######..................,,
+,,................########oooo####............##oooooo######..................,,
+,,,.......................######................######......................,,,,
+g,,,......................######................######......................,,,.
+W,,,........................................................................,,,w
+W,,,........................................................................,,,W
+Wg,,,,....................................................................,,,,gW
+WW.,,,....................................................................,,,.WW
+WWW,,,,,................................................................,,,,,wWW
+WWWw,,,,................................................................,,,,gWWW
+WWWWw,,,,,,.........................................................,,,,,,,gWWWW
+WWWWWW.,,,,,........................................................,,,,,.WWWWWW
+WWWWWWWg,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,gWWWWWWW
+WWWWWWWWWwb.,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,.wWWWWWWWWW
