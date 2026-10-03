@@ -2,6 +2,7 @@ package dev.kirin.kiwa.ui
 
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -50,6 +51,7 @@ class MenuBarView(
         text = "⌘  何をする？　ファイル / コマンド / 行"
         textSize = 13f
         maxLines = 1
+        ellipsize = TextUtils.TruncateAt.END
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(14), 0, dp(14), 0)
         isClickable = true
@@ -86,12 +88,11 @@ class MenuBarView(
         addView(View(context), LayoutParams(0, 1, 1f))
         for (command in commands().quick()) {
             val button = TextView(context).apply {
-                text = QUICK_LABELS.getValue(command.id)
+                text = command.label
                 textSize = 15f
                 gravity = Gravity.CENTER
                 minWidth = dp(BUTTON_HEIGHT)
                 setPadding(dp(8), 0, dp(8), 0)
-                contentDescription = command.label
                 // 表の `run` を走らせる。押せるかは [refreshQuick] が表の `available` から決める。
                 setOnClickListener { command.run() }
             }
@@ -99,7 +100,7 @@ class MenuBarView(
             addView(button, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(BUTTON_HEIGHT)))
         }
         refreshQuick()
-        addView(paletteField, LayoutParams(dp(360), dp(32)).apply { marginStart = dp(8) })
+        addView(paletteField, LayoutParams(dp(PALETTE_WIDTH), dp(32)).apply { marginStart = dp(8) })
         apply(palette)
     }
 
@@ -111,6 +112,31 @@ class MenuBarView(
             button.isClickable = available
             button.isFocusable = available
             button.alpha = if (available) 1f else DIMMED
+        }
+    }
+
+    /**
+     * パレットの欄は [PALETTE_WIDTH] まで。**幅が足りない向きでは欄だけを縮める** ──
+     * メニュー6つ＋常設の3つ＋欄で約 854dp あり、縦向きのタブレット（800dp）では欄が画面の外へ切れた。
+     */
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val lp = paletteField.layoutParams as? LayoutParams
+        if (lp == null) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            return
+        }
+        lp.width = dp(PALETTE_WIDTH)
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        var used = paddingLeft + paddingRight
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val p = child.layoutParams as LayoutParams
+            used += child.measuredWidth + p.leftMargin + p.rightMargin
+        }
+        val over = used - MeasureSpec.getSize(widthMeasureSpec)
+        if (over > 0) {
+            lp.width = maxOf(dp(PALETTE_WIDTH) - over, 0)
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         }
     }
 
@@ -192,7 +218,7 @@ class MenuBarView(
         /** メニューと常設ボタンの高さ（dp）。Android の押せる大きさの目安 48dp。 */
         const val BUTTON_HEIGHT = 48
 
-        /** 常設の3つに出す文字。**押す先は表の id から引く**ので、ここは見た目だけ。 */
-        val QUICK_LABELS = mapOf("file.save" to "保存", "edit.undo" to "↶", "edit.redo" to "↷")
+        /** パレットの欄の幅（dp）。狭い向きでは [onMeasure] が縮める。 */
+        const val PALETTE_WIDTH = 360
     }
 }
