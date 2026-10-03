@@ -23,7 +23,7 @@ class EditorThemeColorsTest {
     private fun rgb(color: Int) = "#%06x".format(color and 0xFFFFFF)
 
     @Test
-    fun `どの配色も括弧の組と縦線の色が強調色で、固定見出しの区切りが枠の色`() {
+    fun `どの配色も括弧の組の色が強調色、今の縦線が控えめな文字の色、固定見出しの区切りが枠の色`() {
         for (palette in Palette.entries) {
             val colors = colors(palette)
             val accent = rgb(palette.accent)
@@ -32,7 +32,9 @@ class EditorThemeColorsTest {
             assertEquals("$name border", accent, colors.getString("editorBracketMatch.border"))
             assertEquals("$name foreground", accent, colors.getString("editorBracketMatch.foreground"))
             assertEquals("$name pair guide", accent, colors.getString("editorBracketPairGuide.activeBackground1"))
-            assertEquals("$name 今の縦線", accent, colors.getString("editorIndentGuide.activeBackground"))
+            // 今のブロックの縦線は字下げから作る線で、括弧の組とは範囲がずれる。組の線と同じ色にすると、
+            // 組の線が閉じ括弧の先まで伸びて見える（実機で見つけた）ので、控えめな文字の色にしておく。
+            assertEquals("$name 今の縦線", rgb(palette.dim), colors.getString("editorIndentGuide.activeBackground"))
             assertEquals("$name sticky", rgb(palette.frame), colors.getString("editorStickyScroll.border"))
         }
     }

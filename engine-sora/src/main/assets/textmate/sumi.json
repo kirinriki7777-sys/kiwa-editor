@@ -11,7 +11,7 @@
     "editorLineNumber.activeForeground": "#d7ba7d",
     "editorWhitespace.foreground": "#3a3a3a",
     "editorIndentGuide.background": "#3a3a3a",
-    "editorIndentGuide.activeBackground": "#d7ba7d",
+    "editorIndentGuide.activeBackground": "#8a8a8a",
     "editorBracketMatch.background": "#d7ba7d38",
     "editorBracketMatch.border": "#d7ba7d",
     "editorBracketMatch.foreground": "#d7ba7d",
