@@ -59,7 +59,7 @@ class TabStripView(
             contentDescription = "新しいタブ"
             setPadding(dp(14), 0, dp(14), 0)
             setOnClickListener { onNew() }
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34)))
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(TAB_HEIGHT)))
         // 選んだタブが画面の外にあると「切り替わっていない」ように見える。
         post {
             val view = row.getChildAt(active) ?: return@post
@@ -109,14 +109,23 @@ class TabStripView(
             gravity = Gravity.CENTER
             setTextColor(palette.dim)
             contentDescription = "タブを閉じる"
-            // 閉じるは**取り返しがつかない側**なので、当たり判定を広げすぎない。
-            setPadding(dp(10), 0, dp(10), 0)
+            // 押せる幅は 32dp 以上（案B）。閉じるは**取り返しがつかない側**なので、高さはタブの高さまでに留める。
+            minWidth = dp(CLOSE_WIDTH)
+            setPadding(dp(8), 0, dp(8), 0)
             setOnClickListener { onClose(index) }
         }
         holder.addView(close, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        holder.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34))
+        holder.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(TAB_HEIGHT))
         return holder
     }
 
     private fun dp(value: Int): Int = (value * density).toInt()
+
+    private companion object {
+        /** タブと `+` の高さ（dp）。 */
+        const val TAB_HEIGHT = 44
+
+        /** × の押せる幅（dp）。 */
+        const val CLOSE_WIDTH = 32
+    }
 }

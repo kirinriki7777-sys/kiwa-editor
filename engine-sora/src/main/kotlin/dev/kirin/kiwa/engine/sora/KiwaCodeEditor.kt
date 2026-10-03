@@ -12,9 +12,11 @@ import io.github.rosemoe.sora.event.EditorKeyEvent
 import io.github.rosemoe.sora.event.SelectionChangeEvent
 import io.github.rosemoe.sora.lang.EmptyLanguage
 import io.github.rosemoe.sora.lang.analysis.StyleUpdateRange
+import io.github.rosemoe.sora.lang.styling.CodeBlock
 import io.github.rosemoe.sora.lang.styling.Styles
 import io.github.rosemoe.sora.text.Content
 import io.github.rosemoe.sora.widget.CodeEditor
+import io.github.rosemoe.sora.widget.EditorRenderer
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import java.lang.reflect.Field
 
@@ -73,6 +75,11 @@ internal class KiwaCodeEditor(
                 "blockedByBoundary", blocked
             )
         }
+
+        // 行番号の左・行番号と区切り線の間・区切り線と本文の間に、それぞれ約 8dp（案 B）。
+        // Sora の既定は 0 / 2dp / 2dp で、数字が画面の端と本文に貼り付いて見える。
+        setLineNumberMarginLeft(dpUnit * GUTTER_MARGIN_DP)
+        setDividerMargin(dpUnit * GUTTER_MARGIN_DP, dpUnit * GUTTER_MARGIN_DP)
 
         installTracing()
         installAutoClosedTracking()
@@ -444,6 +451,7 @@ internal class KiwaCodeEditor(
      */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        drawBracketPairGuide(canvas)
         val rows = layout?.rowCount ?: return
         val rowHeight = rowHeight
         if (rowHeight <= 0) return
@@ -457,6 +465,84 @@ internal class KiwaCodeEditor(
             if (baseline > 0) canvas.drawText("~", x, baseline.toFloat(), endOfFilePaint)
             row++
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 今の括弧の組を結ぶ線（見た目案 B）
+    // ------------------------------------------------------------------
+
+    /** 組の線の色。配色を入れるたびにエンジンが渡す（Sora の配色に置き場が無い）。0 なら描かない。 */
+    var bracketPairGuideColor = 0
+
+    private val guidePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+
+    /**
+     * カーソルが接している括弧の組だけを線で結ぶ。形は [BracketPairGuide]、ここは座標に直して描くだけ。
+     *
+     * 描かない時: 変換中・選択中・「対応する括弧を強調する」が off・折り返し中
+     * （折り返すと行と段が1対1でなくなり、行の座標をそのまま使えない）。
+     * 組の位置は Sora が括弧の強調に使っているもの（`styleDelegate`）をそのまま読む。
+     */
+    private fun drawBracketPairGuide(canvas: Canvas) {
+        if (bracketPairGuideColor == 0 || !props.highlightMatchingDelimiters || !isHighlightBracketPair ||
+            isWordwrap || cursor.isSelected || hasComposingText()
+        ) return
+        val pair = styleDelegate.foundBracketPair ?: return
+        val content = text
+        if (pair.leftIndex < 0 || pair.leftIndex >= pair.rightIndex ||
+            pair.rightIndex + pair.rightLength > content.length
+        ) return
+        val open = content.indexer.getCharPosition(pair.leftIndex)
+        val close = content.indexer.getCharPosition(pair.rightIndex)
+        val width = tabWidth
+        val openText = content.getLine(open.line)
+        val closeText = content.getLine(close.line)
+        val indent = BracketPairGuide.indentColumns(openText, width)
+        val segments = BracketPairGuide.segments(
+            open.line, BracketPairGuide.displayColumn(openText, open.column, width),
+            close.line, BracketPairGuide.displayColumn(closeText, close.column, width),
+            indent
+        )
+        if (segments.isEmpty()) return
+
+        /** 表示の桁を画面の x に直す。**行ごとの実際の文字の位置から引く**ので、書体が等幅でなくても合う。 */
+        fun xOf(line: Int, column: Int): Float =
+            getCharOffsetX(line, BracketPairGuide.charIndexAt(content.getLine(line), column, width))
+
+        guidePaint.color = bracketPairGuideColor
+        guidePaint.strokeWidth = dpUnit * GUIDE_WIDTH_DP
+        canvas.save()
+        // 本文の領域の中だけ。左は行番号の列、上は固定見出しの帯の下 ── はみ出した線を描かない。
+        canvas.clipRect(measureTextRegionOffset(), stuckBandBottom().toFloat(), this.width.toFloat(), this.height.toFloat())
+        val guideX = xOf(open.line, indent)
+        for (segment in segments) {
+            when (segment) {
+                is BracketPairGuide.Vertical -> {
+                    val top = (getRowTop(segment.fromLine) - offsetY).toFloat()
+                    val bottom = (getRowTop(segment.toLine) - offsetY).toFloat()
+                    canvas.drawLine(guideX, top, guideX, bottom, guidePaint)
+                }
+                is BracketPairGuide.Horizontal -> {
+                    val y = ((if (segment.atBottom) getRowBottom(segment.line) else getRowTop(segment.line)) - offsetY).toFloat()
+                    canvas.drawLine(guideX, y, xOf(segment.line, segment.toColumn), y, guidePaint)
+                }
+            }
+        }
+        canvas.restore()
+    }
+
+    /**
+     * 固定見出し（sticky scroll）の帯の下端。無ければ 0。
+     *
+     * Sora は帯の高さを公開していない（`EditorRenderer.lastStuckLines` は `protected`）ので、
+     * 読めなければ 0 を返す ── 線が帯の上に重なるだけで、壊れはしない。
+     * 帯は見出しの行ごとに1行ぶん（同じ開始行は1本）。
+     */
+    private fun stuckBandBottom(): Int {
+        val field = STUCK_LINES_FIELD ?: return 0
+        val blocks = runCatching { field.get(renderer) as? List<*> }.getOrNull() ?: return 0
+        val rows = blocks.mapNotNull { (it as? CodeBlock)?.startLine }.distinct().size
+        return if (rows == 0) 0 else getRowBottom(rows - 1)
     }
 
     /**
@@ -493,6 +579,15 @@ internal class KiwaCodeEditor(
     }
 
     private companion object {
+        const val GUIDE_WIDTH_DP = 1.5f
+        const val GUTTER_MARGIN_DP = 8f
+
+        /** Sora の `EditorRenderer.lastStuckLines`（protected、0.24.6）。読めなければ null。 */
+        val STUCK_LINES_FIELD: Field? = runCatching {
+            EditorRenderer::class.java.getDeclaredField("lastStuckLines")
+                .apply { isAccessible = true }
+        }.getOrNull()
+
         /**
          * Sora の `CodeEditor.inputMethodManager`（private、0.24.6）。**Sora を書き換えずに**
          * [switchContent] が `setText` の中の `restartInput` を飛ばすための口。

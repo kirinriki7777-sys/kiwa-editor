@@ -38,6 +38,20 @@ class CommandsTest {
     }
 
     @Test
+    fun `常設のボタンに出るのは表にある保存と戻すと進むだけ`() {
+        val host = FakeCommandHost()
+        val commands = Commands.build(host)
+        assertEquals(listOf("file.save", "edit.undo", "edit.redo"), commands.quick().map { it.id })
+        commands.quick().forEach { it.run() }
+        assertEquals(listOf("save", "undo", "redo"), host.calls)
+        // 表の項目そのもの（別の実装を指さない）で、メニューの中にも残っている
+        val inMenus = commands.menus().flatMap { (_, items) -> items }
+        for (command in commands.quick()) {
+            assertTrue(command.id, inMenus.any { it === command })
+        }
+    }
+
+    @Test
     fun `メニューは分類の順に並び、空のメニューは出さない`() {
         val menus = Commands.build(FakeCommandHost()).menus()
         val groups = menus.map { it.first }

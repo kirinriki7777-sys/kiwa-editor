@@ -24,10 +24,15 @@ import dev.kirin.kiwa.command.Commands
  * 必ずどれかのメニューに出るので、⋯ に入れ忘れる・バーに載せ忘れる、が起きない。
  * 保存など一部の操作はメニューを開く分だけ2手になる。記号キー列には保存が残る。
  *
+ * ## 常設の3つ
+ *
+ * 右端（パレットの欄の左）に**保存・戻す・進む**を常設する（案B）。メニューを開く2手を1手にするため。
+ * 押すと表の `run` を走らせる ── メニューの中の同じ項目と同じ実装で、メニューの項目も残る。
+ *
  * ## 今できないもの
  *
  * 操作できない項目は**薄くして押せなくする。消して詰めない**
- * （並びを保ち、項目を見失わないようにする）。
+ * （並びを保ち、項目を見失わないようにする）。常設の3つも同じ。
  */
 class MenuBarView(
     context: Context,
@@ -38,6 +43,7 @@ class MenuBarView(
     private val density = resources.displayMetrics.density
     private var palette: Palette = Palette.SUMI
     private val menuButtons = ArrayList<TextView>()
+    private val quickButtons = ArrayList<Pair<Command, TextView>>()
     private var open: PopupWindow? = null
 
     private val paletteField = TextView(context).apply {
@@ -62,29 +68,57 @@ class MenuBarView(
     fun rebuild() {
         removeAllViews()
         menuButtons.clear()
+        quickButtons.clear()
         for ((group, items) in commands().menus()) {
             val button = TextView(context).apply {
                 text = group.label
                 textSize = 14f
                 gravity = Gravity.CENTER
-                minHeight = dp(40)
+                minHeight = dp(BUTTON_HEIGHT)
                 setPadding(dp(12), 0, dp(12), 0)
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { showMenu(this, items) }
             }
             menuButtons.add(button)
-            addView(button, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)))
+            addView(button, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(BUTTON_HEIGHT)))
         }
         addView(View(context), LayoutParams(0, 1, 1f))
+        for (command in commands().quick()) {
+            val button = TextView(context).apply {
+                text = QUICK_LABELS.getValue(command.id)
+                textSize = 15f
+                gravity = Gravity.CENTER
+                minWidth = dp(BUTTON_HEIGHT)
+                setPadding(dp(8), 0, dp(8), 0)
+                contentDescription = command.label
+                // 表の `run` を走らせる。押せるかは [refreshQuick] が表の `available` から決める。
+                setOnClickListener { command.run() }
+            }
+            quickButtons.add(command to button)
+            addView(button, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(BUTTON_HEIGHT)))
+        }
+        refreshQuick()
         addView(paletteField, LayoutParams(dp(360), dp(32)).apply { marginStart = dp(8) })
         apply(palette)
+    }
+
+    /** 常設の3つの押せる/押せないを表から引き直す。戻す・進むは打つたびに変わるので、状態表示と同じ合図で呼ぶ。 */
+    fun refreshQuick() {
+        for ((command, button) in quickButtons) {
+            val available = command.available
+            button.isEnabled = available
+            button.isClickable = available
+            button.isFocusable = available
+            button.alpha = if (available) 1f else DIMMED
+        }
     }
 
     fun apply(palette: Palette) {
         this.palette = palette
         setBackgroundColor(palette.toolbar)
         for (button in menuButtons) button.setTextColor(palette.text)
+        for ((_, button) in quickButtons) button.setTextColor(palette.text)
         paletteField.background = GradientDrawable().apply {
             setColor(palette.background)
             setStroke(dp(1), palette.frame)
@@ -154,5 +188,11 @@ class MenuBarView(
 
     private companion object {
         const val DIMMED = SymbolRowView.DIMMED
+
+        /** メニューと常設ボタンの高さ（dp）。Android の押せる大きさの目安 48dp。 */
+        const val BUTTON_HEIGHT = 48
+
+        /** 常設の3つに出す文字。**押す先は表の id から引く**ので、ここは見た目だけ。 */
+        val QUICK_LABELS = mapOf("file.save" to "保存", "edit.undo" to "↶", "edit.redo" to "↷")
     }
 }

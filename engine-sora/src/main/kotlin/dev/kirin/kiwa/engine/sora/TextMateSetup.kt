@@ -14,8 +14,10 @@ import io.github.rosemoe.sora.langs.textmate.registry.model.GrammarDefinition
 import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
 import io.github.rosemoe.sora.langs.textmate.registry.reader.LanguageDefinitionReader
+import io.github.rosemoe.sora.langs.textmate.utils.ColorUtils
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import io.github.rosemoe.sora.widget.schemes.SchemeDarcula
+import org.eclipse.tm4e.core.internal.theme.raw.RawTheme
 import org.eclipse.tm4e.core.registry.IThemeSource
 
 /**
@@ -203,5 +205,29 @@ internal object TextMateSetup {
         }
         if (current is TextMateColorScheme) return current
         return TextMateColorScheme.create(ThemeRegistry.getInstance())
+    }
+
+    /**
+     * 配色の `colors` にある VS Code 名の色のうち、Sora が自分では読まないものを Sora の配色へ写す。
+     * 配色を入れるたびに呼ぶ（Sora は配色を読み直すたびに自分の分を初期値へ戻す）。
+     *
+     * | json のキー | 写す先 |
+     * |---|---|
+     * | `editorBracketMatch.background` / `.border` / `.foreground` | 括弧の組の強調の 地 / 枠 / 文字色 |
+     * | `editorStickyScroll.border` | 固定見出しの下の区切り |
+     *
+     * キーが無い・読めない色は触らない。
+     *
+     * @return 組の線の色（`editorBracketPairGuide.activeBackground1`）。無ければ 0（線を描かない）
+     */
+    fun applyKiwaColors(scheme: EditorColorScheme): Int {
+        val colors = ((scheme as? TextMateColorScheme)?.rawTheme as? RawTheme)?.get("colors") as? RawTheme ?: return 0
+        fun color(key: String): Int? = (colors.get(key) as? String)
+            ?.let { runCatching { ColorUtils.parseRGBAToARGB(it) }.getOrNull() }
+        color("editorBracketMatch.background")?.let { scheme.setColor(EditorColorScheme.HIGHLIGHTED_DELIMITERS_BACKGROUND, it) }
+        color("editorBracketMatch.border")?.let { scheme.setColor(EditorColorScheme.HIGHLIGHTED_DELIMITERS_BORDER, it) }
+        color("editorBracketMatch.foreground")?.let { scheme.setColor(EditorColorScheme.HIGHLIGHTED_DELIMITERS_FOREGROUND, it) }
+        color("editorStickyScroll.border")?.let { scheme.setColor(EditorColorScheme.STICKY_SCROLL_DIVIDER, it) }
+        return color("editorBracketPairGuide.activeBackground1") ?: 0
     }
 }

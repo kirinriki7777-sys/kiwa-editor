@@ -238,6 +238,8 @@ internal class SoraEditorEngine(context: Context, trace: ImeTrace?) : EditorEngi
             EditorColorScheme.LINE_DIVIDER,
             editor.colorScheme.getColor(EditorColorScheme.BLOCK_LINE)
         )
+        // 括弧の組の強調・固定見出しの区切りは Sora が読まない名前なので、ここで写す。
+        editor.bracketPairGuideColor = TextMateSetup.applyKiwaColors(editor.colorScheme)
         // 変換中の装飾に必要な濃さは地の明るさで変わるので、境界にも知らせる。
         boundary.setTheme(theme)
     }
@@ -347,6 +349,12 @@ internal class SoraEditorEngine(context: Context, trace: ImeTrace?) : EditorEngi
 
     override fun setIndentGuides(enabled: Boolean) {
         editor.isBlockLineEnabled = enabled
+    }
+
+    override fun setStickyScroll(enabled: Boolean) {
+        // 折り返し中は Sora が出さない（EditorRenderer.getStuckCodeBlocks の最初の条件）。
+        editor.props.stickyScroll = enabled
+        editor.invalidate()
     }
 
     override fun setPinLineNumbers(pinned: Boolean) {

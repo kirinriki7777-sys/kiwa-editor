@@ -46,7 +46,15 @@ class Commands private constructor(val all: List<Command>) {
             all.filter { it.group == group }.takeIf { it.isNotEmpty() }?.let { group to it }
         }
 
+    /**
+     * メニューバーの右に常設する3つ（保存・戻す・進む）。メニューの中の同じ項目は残る。
+     * **押すと表の `run` を走らせる**ので、メニュー・パレットと同じ実装を指す。
+     */
+    fun quick(): List<Command> = QUICK_IDS.map { get(it) }
+
     companion object {
+        private val QUICK_IDS = listOf("file.save", "edit.undo", "edit.redo")
+
         /**
          * 表を組む。**id は変えない** ── 記号キー列の設定（`cmd.<id>`）と
          * `tools/tables/commands.md` の表が id で結ばれている。

@@ -210,6 +210,13 @@ class SettingsActivity : Activity() {
         ) {
             update(settings.copy(indentGuides = it))
         }
+        toggle(
+            "固定見出しを出す",
+            "下へ送ると、いま居るブロックの頭の行が上に残る。折り返し中は出ません",
+            settings.stickyScroll
+        ) {
+            update(settings.copy(stickyScroll = it))
+        }
         toggle("カーソルを点滅させる", null, settings.cursorBlink) {
             update(settings.copy(cursorBlink = it))
         }

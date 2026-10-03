@@ -61,6 +61,8 @@ data class EditorSettings(
     val highlightMatchingBrackets: Boolean = true,
     /** インデントガイド。**線が出るかは言語次第**（ブロックの範囲を文法が教える場合だけ）。 */
     val indentGuides: Boolean = true,
+    /** 下へ送ると、いま居るブロックの頭の行が上に残る。**折り返し中は出ない**（エンジンが出さない）。 */
+    val stickyScroll: Boolean = true,
     /** 横スクロールしても行番号を左端に留める。 */
     val pinLineNumbers: Boolean = false,
 
@@ -200,6 +202,7 @@ data class EditorSettings(
         engine.setCursorBlink(cursorBlink)
         engine.setHighlightMatchingBrackets(highlightMatchingBrackets)
         engine.setIndentGuides(indentGuides)
+        engine.setStickyScroll(stickyScroll)
         engine.setPinLineNumbers(pinLineNumbers)
         engine.setAutoClosePairs(autoClosePairs)
         engine.setAutoIndent(autoIndent)
@@ -268,6 +271,7 @@ data class EditorSettings(
         put("cursorBlink", cursorBlink)
         put("highlightMatchingBrackets", highlightMatchingBrackets)
         put("indentGuides", indentGuides)
+        put("stickyScroll", stickyScroll)
         put("pinLineNumbers", pinLineNumbers)
         put("symbolRow", showSymbolRow)
         put("symbolRowKeys", org.json.JSONArray(symbolRowKeys))
@@ -341,6 +345,7 @@ data class EditorSettings(
                     "highlightMatchingBrackets", defaults.highlightMatchingBrackets
                 ),
                 indentGuides = json.optBoolean("indentGuides", defaults.indentGuides),
+                stickyScroll = json.optBoolean("stickyScroll", defaults.stickyScroll),
                 pinLineNumbers = json.optBoolean("pinLineNumbers", defaults.pinLineNumbers),
                 showSymbolRow = json.optBoolean("symbolRow", defaults.showSymbolRow),
                 symbolRowKeys = readSymbolRowKeys(json.optJSONArray("symbolRowKeys"))

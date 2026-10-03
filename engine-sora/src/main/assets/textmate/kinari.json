@@ -11,7 +11,12 @@
     "editorLineNumber.activeForeground": "#3f7a3a",
     "editorWhitespace.foreground": "#d5cbb2",
     "editorIndentGuide.background": "#d5cbb2",
-    "editorIndentGuide.activeBackground": "#6a624f",
+    "editorIndentGuide.activeBackground": "#3f7a3a",
+    "editorBracketMatch.background": "#3f7a3a38",
+    "editorBracketMatch.border": "#3f7a3a",
+    "editorBracketMatch.foreground": "#3f7a3a",
+    "editorBracketPairGuide.activeBackground1": "#3f7a3a",
+    "editorStickyScroll.border": "#a1967a",
     "editor.findMatchBackground": "#e2d9bf",
     "editor.wordHighlightBackground": "#efe8d4",
     "editor.wordHighlightStrongBackground": "#e2d9bf"

@@ -1585,6 +1585,8 @@ class MainActivity : Activity(), CommandHost {
         // **変換中は記号キー列を黙らせる。** 状態表示と同じ合図で動かすので、
         // 「変換中」の文字と列の見た目がずれない。
         symbolRow.setComposing(engine.ime().isComposing)
+        // 戻す・進むの押せる/押せないも打つたびに変わる ── 同じ合図で引き直す。
+        menuBar.refreshQuick()
         refreshCharsetChip()
     }
 

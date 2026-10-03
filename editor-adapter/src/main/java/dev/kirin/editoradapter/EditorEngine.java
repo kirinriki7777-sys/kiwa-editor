@@ -316,6 +316,13 @@ public interface EditorEngine {
      */
     void setIndentGuides(boolean enabled);
 
+    /**
+     * 下へ送ったとき、いま居るブロックの頭の行を上に残す（固定見出し / sticky scroll）か。
+     *
+     * <p><b>折り返しが on の間は出ない</b>（エンジンが出さない）。false にすれば必ず消える。
+     */
+    void setStickyScroll(boolean enabled);
+
     /** 横へスクロールしたときに、行番号を左端へ留めておくか。 */
     void setPinLineNumbers(boolean pinned);
 

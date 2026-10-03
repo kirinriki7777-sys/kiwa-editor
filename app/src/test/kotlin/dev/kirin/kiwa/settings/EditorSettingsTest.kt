@@ -59,6 +59,7 @@ class EditorSettingsTest {
             cursorBlink = false,
             highlightMatchingBrackets = false,
             indentGuides = false,
+            stickyScroll = false,
             pinLineNumbers = true,
             showSymbolRow = false,
             symbolRowKeys = listOf("raw.esc", "mod.ctrl"),
@@ -80,6 +81,15 @@ class EditorSettingsTest {
             extraExtensions = mapOf("gradle" to "kotlin")
         )
         assertEquals(settings, EditorSettings.fromJson(settings.toJson()))
+    }
+
+    @Test
+    fun `固定見出しの設定が書かれていない古い設定ファイルは入れる側で読む`() {
+        val json = EditorSettings().toJson()
+        json.remove("stickyScroll")
+        assertTrue(EditorSettings.fromJson(json).stickyScroll)
+        // 書いてあれば、切った値も読み戻す
+        assertFalse(EditorSettings.fromJson(EditorSettings(stickyScroll = false).toJson()).stickyScroll)
     }
 
     @Test
@@ -174,6 +184,7 @@ class EditorSettingsTest {
         assertTrue(defaults.cursorBlink)
         assertTrue(defaults.highlightMatchingBrackets)
         assertTrue(defaults.indentGuides)
+        assertTrue(defaults.stickyScroll)
         assertFalse(defaults.pinLineNumbers)
         assertTrue(defaults.autoClosePairs)
         assertTrue(defaults.autoIndent)
@@ -264,6 +275,7 @@ class EditorSettingsTest {
             cursorBlink = false,
             highlightMatchingBrackets = false,
             indentGuides = false,
+            stickyScroll = false,
             pinLineNumbers = true,
             autoClosePairs = false,
             autoIndent = false
@@ -284,6 +296,7 @@ class EditorSettingsTest {
         assertEquals(false, engine.seenCursorBlink)
         assertEquals(false, engine.seenMatchingBrackets)
         assertEquals(false, engine.seenIndentGuides)
+        assertEquals(false, engine.seenStickyScroll)
         assertEquals(true, engine.seenPinLineNumbers)
         assertEquals(false, engine.seenAutoClosePairs)
         assertEquals(false, engine.seenAutoIndent)
@@ -351,6 +364,7 @@ class EditorSettingsTest {
         var seenCursorBlink: Boolean? = null
         var seenMatchingBrackets: Boolean? = null
         var seenIndentGuides: Boolean? = null
+        var seenStickyScroll: Boolean? = null
         var seenPinLineNumbers: Boolean? = null
         var seenAutoClosePairs: Boolean? = null
         var seenAutoIndent: Boolean? = null
@@ -388,6 +402,7 @@ class EditorSettingsTest {
         override fun setAutoIndent(enabled: Boolean) { seenAutoIndent = enabled }
         override fun setHighlightMatchingBrackets(enabled: Boolean) { seenMatchingBrackets = enabled }
         override fun setIndentGuides(enabled: Boolean) { seenIndentGuides = enabled }
+        override fun setStickyScroll(enabled: Boolean) { seenStickyScroll = enabled }
         override fun setPinLineNumbers(pinned: Boolean) { seenPinLineNumbers = pinned }
         override fun ime(): ImeBoundary = throw UnsupportedOperationException()
 
