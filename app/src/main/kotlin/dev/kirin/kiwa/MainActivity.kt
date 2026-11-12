@@ -16,6 +16,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -34,6 +36,8 @@ import dev.kirin.kiwa.engine.sora.SoraEngine
 import dev.kirin.kiwa.file.Encodings
 import dev.kirin.kiwa.file.LanguageChoice
 import dev.kirin.kiwa.file.NewFile
+import dev.kirin.kiwa.file.PreviousVersion
+import dev.kirin.kiwa.file.ResumePoint
 import dev.kirin.kiwa.file.SaveAs
 import dev.kirin.kiwa.file.SaveCleanup
 import dev.kirin.kiwa.file.StorageAccess
@@ -60,7 +64,13 @@ import dev.kirin.kiwa.ui.ProjectSearchView
 import dev.kirin.kiwa.ui.SearchBarView
 import dev.kirin.kiwa.ui.SymbolRowView
 import dev.kirin.kiwa.ui.TabStripView
+import dev.kirin.kiwa.view.CharCount
+import dev.kirin.kiwa.view.ViewMode
 import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
+import java.nio.file.attribute.BasicFileAttributes
 
 /**
  * 画面の骨格。メニューバーと配色を備える。
@@ -116,6 +126,15 @@ class MainActivity : Activity(), CommandHost {
         val effectiveLanguage: String? get() = languageChoice.resolve(language)
         var lineSeparator: String? = null
         var savedText: String = ""
+
+        /**
+         * コードかワープロか。開くたびに拡張子の既定（[ViewMode.defaultFor]）に戻る
+         * （続きから開く1件だけ、覚えたモードで開く）。無題のタブはコード。
+         */
+        var mode: ViewMode = ViewMode.CODE
+
+        /** 縦書き。タブごとには永続化せず、続きから開く1件だけ記録する。 */
+        var vertical: Boolean = false
 
         /**
          * 未保存か。**出ていないタブは自分で変わりようがない**ので、
@@ -181,6 +200,21 @@ class MainActivity : Activity(), CommandHost {
     private var imeVisible = false
 
     /**
+     * 集中の画面か。**設定 `fullscreen`（端末のステータスバーを消す）とは別物**で、値も触らない。
+     * 消すのはこのアプリの帯（メニューバー・タブ列・記号キー列・ステータスバー）で、残すのは本文と [focusCount]。
+     */
+    private var focusMode = false
+
+    /** 集中の画面の隅に出す小さな文字数。 */
+    private lateinit var focusCount: TextView
+
+    /**
+     * 集中の画面を戻るで出る口。**変換中は何もしない**（変換の取り消しを奪わない）。
+     * ソフトキーボードが出ている間の戻るは IME が先に取る（キーボードを畳む）ので、ここへは来ない。
+     */
+    private val focusBack = OnBackInvokedCallback { if (!engine.ime().isComposing) exitFocus() }
+
+    /**
      * 操作の表。**画面に出る口はここからしか生えない**（E10）。
      * バー・オーバーフロー・パレットが同じ表を引くので、同じ操作が2つの実装を持てない。
      */
@@ -192,6 +226,9 @@ class MainActivity : Activity(), CommandHost {
 
     private val tabs = ArrayList<OpenTab>()
     private var activeIndex = -1
+
+    /** 上書き前の版の置き場。アプリ専用の領域で、元のファイルの隣には何も作らない。 */
+    private val previous by lazy { PreviousVersion(File(filesDir, "previous")) }
 
     /**
      * 実機ゲート用の計測。**debug ビルドでだけ作る**ので、release では
@@ -234,6 +271,71 @@ class MainActivity : Activity(), CommandHost {
 
         openBlankTab()
         applyAll()
+        val debugOpen = BuildConfig.DEBUG && applyDebugExtras(intent)
+        if (!debugOpen) resumeLastFile()
+    }
+
+    /**
+     * 端末の台本（`tools/device-test.sh`）用の起動口。**debug ビルドでだけ読む。**
+     * `kiwa.debug.trace`（真偽）で計測を始め、`kiwa.debug.open`（絶対パス）でそのファイルをタブで開く。
+     * 起動済みの所へ足して開く時は `am start --activity-single-top`（[onNewIntent]）。
+     */
+    private fun applyDebugExtras(intent: Intent?): Boolean {
+        if (intent?.getBooleanExtra(DEBUG_EXTRA_TRACE, false) == true) {
+            runCatching { trace?.startNewSession() }
+        }
+        val path = intent?.getStringExtra(DEBUG_EXTRA_OPEN) ?: return false
+        openFile(File(path))
+        return true
+    }
+
+    /** 台本が複数のタブを作るための口。debug ビルドでだけ読む。 */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (BuildConfig.DEBUG) applyDebugExtras(intent)
+    }
+
+    /**
+     * 起動したら最後に書いていたワープロのファイルを、終えた位置・その時のモードで開く。
+     * **読めなければ何も言わず今と同じ起動**（無い・権限が無い・大きすぎる）。
+     */
+    private fun resumeLastFile() {
+        val saved = prefs()
+        val point = ResumePoint.restore(
+            saved.getString(KEY_RESUME_PATH, null), saved.getInt(KEY_RESUME_OFFSET, 0), saved.getString(KEY_RESUME_MODE, null),
+            saved.getBoolean(KEY_RESUME_VERTICAL, false)
+        ) ?: return
+        val file = File(point.path)
+        if (!StorageAccess.hasAccess() || !file.isFile || !file.canRead()) return
+        if (!openFile(file, quiet = true, mode = point.mode)) return
+        if (point.vertical) {
+            val tab = activeTab() ?: return
+            tab.vertical = true
+            dropVerticalOverLimit(tab)
+            settings.applyTo(engine, palette.editorTheme, currentDocument())
+            refreshStatus()
+        }
+        val at = engine.positionOf(point.offsetIn(engine.getText().length))
+        engine.setSelection(TextRange(at, at))
+    }
+
+    /**
+     * 続きからの記録（絶対パス・位置・モード・縦横）。**覚えるのは1件だけ** ── 今のタブがファイルを持つワープロ
+     * （拡張子の既定がワープロか、手でワープロにしたもの）のとき。コードのタブでは書き換えない。
+     */
+    private fun rememberResumePoint() {
+        val tab = activeTab() ?: return
+        val file = tab.file?.file ?: return
+        if (tab.mode != ViewMode.WORDPROCESSOR && ViewMode.defaultFor(file.name) != ViewMode.WORDPROCESSOR) return
+        // 変換中の未確定の文字は保存されないので、位置もその手前までにする。
+        var offset = engine.getSelection().end().index()
+        engine.ime().composingRange()?.let { offset = minOf(offset, it.start().index()) }
+        prefs().edit()
+            .putString(KEY_RESUME_PATH, file.absolutePath)
+            .putInt(KEY_RESUME_OFFSET, offset)
+            .putString(KEY_RESUME_MODE, tab.mode.name)
+            .putBoolean(KEY_RESUME_VERTICAL, tab.vertical && tab.mode == ViewMode.WORDPROCESSOR)
+            .apply()
     }
 
     // ------------------------------------------------------------------
@@ -341,6 +443,18 @@ class MainActivity : Activity(), CommandHost {
             projectSearch,
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         )
+        focusCount = TextView(this).apply {
+            textSize = 11f
+            alpha = 0.7f
+            visibility = View.GONE
+        }
+        body.addView(
+            focusCount,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM or Gravity.END
+            ).apply { setMargins(0, 0, PAD, PAD / 2) }
+        )
         root.addView(
             body,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
@@ -350,6 +464,8 @@ class MainActivity : Activity(), CommandHost {
             // 右端の文字コードの札（2026-10-02）。**入口も表を通す**（メニューバーと同じ）。
             // ここで直に開くと、表の外に道が1本できる。
             onCharsetClick = { commands["file.encoding"].run() }
+            // モード名の札も表を通す（`view.mode`）。
+            onModeClick = { commands["view.mode"].run() }
         }
         root.addView(
             status,
@@ -594,6 +710,86 @@ class MainActivity : Activity(), CommandHost {
             .show()
     }
 
+    /**
+     * タブのモードを替える。**本文・取り消しの履歴・カーソルは触らない** ──
+     * 替わるのは見た目だけで、エンジンへは適用の口を1本だけ通して入れる。
+     */
+    override fun toggleMode() {
+        val tab = activeTab() ?: return
+        tab.mode = tab.mode.toggled()
+        // コードになったら集中の画面は成り立たない（集中の画面はワープロのもの）。
+        if (tab.mode != ViewMode.WORDPROCESSOR) exitFocus()
+        // コードの間に本文が増えていることがある（その間は上限を見ていない）。
+        dropVerticalOverLimit(tab)
+        settings.applyTo(engine, palette.editorTheme, currentDocument())
+        updateSymbolRow()
+        refreshStatus()
+    }
+
+    /**
+     * 出ているタブが縦のまま縦書きの上限を超えていたら、横へ戻して知らせる。戻したら true。
+     * **縦になりうる入口の全部で呼ぶ** ── エンジンは上限を超える本文を縦にしないので、
+     * 漏れるとアプリだけが縦のつもりのまま食い違う。
+     */
+    private fun dropVerticalOverLimit(tab: OpenTab): Boolean {
+        if (tab.mode != ViewMode.WORDPROCESSOR || !tab.vertical) return false
+        if (engine.getText().length <= EditorEngine.MAX_VERTICAL_CHARS) return false
+        tab.vertical = false
+        toast("縦書きの上限（10万文字）を超えるため横書きで表示します")
+        return true
+    }
+
+    /**
+     * ワープロタブの縦書き表示・編集を切り替える。
+     * 本文・取り消し履歴・カーソルは触らず、適用の口（applyTo）を通してエンジンへ入れる。
+     */
+    override fun toggleVertical() {
+        val tab = activeTab() ?: return
+        if (tab.mode != ViewMode.WORDPROCESSOR) return
+        if (!tab.vertical && engine.getText().length > EditorEngine.MAX_VERTICAL_CHARS) {
+            toast("縦書きの上限（10万文字）を超えるため横書きを維持します")
+            return
+        }
+        tab.vertical = !tab.vertical
+        settings.applyTo(engine, palette.editorTheme, currentDocument())
+        refreshStatus()
+    }
+
+    /**
+     * 集中の画面に入る。**同じ View を出し入れするだけ**（本文を入れ直さない）ので、IME のつなぎも切れない。
+     * 開いている検索の帯とエクスプローラーは畳む ── 帯が残ると「本文だけ」にならない。
+     */
+    override fun enterFocus() {
+        if (focusMode || activeTab()?.mode != ViewMode.WORDPROCESSOR) return
+        searchBar.close()
+        setDrawerOpen(false)
+        focusMode = true
+        onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, focusBack)
+        applyChrome()
+        engine.asView().requestFocus()
+    }
+
+    private fun exitFocus() {
+        if (!focusMode) return
+        focusMode = false
+        onBackInvokedDispatcher.unregisterOnBackInvokedCallback(focusBack)
+        applyChrome()
+    }
+
+    /** 帯の出し入れ。集中の画面の間は、本文と [focusCount] だけを残す。 */
+    private fun applyChrome() {
+        val bars = if (focusMode) View.GONE else View.VISIBLE
+        menuBar.visibility = bars
+        tabStrip.visibility = bars
+        status.visibility = bars
+        focusCount.visibility = if (focusMode) View.VISIBLE else View.GONE
+        editorFrame.setBare(focusMode)
+        // 集中の画面は本文の周りを広く取る（字が画面の端に貼り付かない。端は戻るのジェスチャーにも取られる）。
+        if (focusMode) body.setPadding(PAD * 4, PAD * 2, PAD * 4, PAD * 2) else body.setPadding(PAD / 2, PAD / 2, PAD / 2, PAD / 4)
+        refreshStatus()
+        updateSymbolRow()
+    }
+
     private fun chooseReopenEncoding(tab: OpenTab, document: TextFile.Document) {
         val choices = Encodings.REOPEN
         val labels = choices.map { choice ->
@@ -677,7 +873,7 @@ class MainActivity : Activity(), CommandHost {
             return
         }
         cleanUpBeforeSave(tab)
-        val text = engine.getText().toString()
+        val text = settledText() ?: return
         val next = when (val prepared = Encodings.convert(document, text, choice)) {
             is SaveAs.Prepared.Rejected -> {
                 toast(prepared.reason)
@@ -685,15 +881,10 @@ class MainActivity : Activity(), CommandHost {
             }
             is SaveAs.Prepared.Ready -> prepared.document
         }
-        try {
-            TextFile.write(next, text)
-        } catch (e: Exception) {
-            toast("保存できなかった: ${e.message}")
-            return
-        }
+        if (!writeTab(tab, next, text)) return
         tab.file = next
         tab.savedText = text
-        tab.dirty = false
+        tab.dirty = engine.getText().toString() != text
         toast("保存した: ${next.file.name}（${choice.label}）")
         refreshTabs()
         refreshStatus()
@@ -977,6 +1168,12 @@ class MainActivity : Activity(), CommandHost {
 
     override fun wordWrap(): Boolean = settings.wordWrap
 
+    override fun modeLabel(): String = (activeTab()?.mode ?: ViewMode.CODE).label
+
+    override fun wordProcessor(): Boolean = activeTab()?.mode == ViewMode.WORDPROCESSOR
+
+    override fun isVertical(): Boolean = activeTab()?.let { it.mode == ViewMode.WORDPROCESSOR && it.vertical } ?: false
+
     /** 計測は debug ビルドにしか無い。**表に載せるかどうかがこれで決まる。** */
     override fun hasTrace(): Boolean = trace != null
 
@@ -1009,6 +1206,7 @@ class MainActivity : Activity(), CommandHost {
         menuBar.apply(palette)
         body.setBackgroundColor(palette.background)
         status.apply(palette)
+        focusCount.setTextColor(palette.dim)
         if (explorerFrame.visibility == View.VISIBLE) drawer.apply(palette, settings)
         layoutPanes()
         commandPalette.apply(palette)
@@ -1031,7 +1229,7 @@ class MainActivity : Activity(), CommandHost {
      */
     private fun currentDocument(): EditorSettings.Document? {
         val tab = activeTab() ?: return null
-        return EditorSettings.Document(tab.effectiveLanguage, tab.lineSeparator)
+        return EditorSettings.Document(tab.effectiveLanguage, tab.lineSeparator, tab.mode, tab.vertical)
     }
 
     private fun applyFullscreen() {
@@ -1078,9 +1276,13 @@ class MainActivity : Activity(), CommandHost {
         }
     }
 
-    /** 記号キー列を出すか決める。**出す条件は3つとも独立**（設定 / ソフトキーボード / 並びが空でない）。 */
+    /**
+     * 記号キー列を出すか決める。**出す条件は独立**（設定 / ソフトキーボード / 並びが空でない）。
+     * ワープロのタブでは出さない。
+     */
     private fun updateSymbolRow() {
-        val show = settings.showSymbolRow && imeVisible && settings.symbolRowKeys.isNotEmpty()
+        val show = settings.showSymbolRow && imeVisible && settings.symbolRowKeys.isNotEmpty() &&
+            activeTab()?.mode != ViewMode.WORDPROCESSOR && !focusMode
         symbolRow.visibility = if (show) View.VISIBLE else View.GONE
     }
 
@@ -1105,9 +1307,12 @@ class MainActivity : Activity(), CommandHost {
         freezeActiveDirty()
         activeIndex = index
         engine.showDocument(tab.document)
+        dropVerticalOverLimit(tab)
         // **言語も改行コードもタブごとに違う**ので、切り替えでも適用の口を通す
         // ── ここで `engine.setLineSeparator()` を直に呼ぶと口が2本になる（check-settings.sh が見ている）。
         settings.applyTo(engine, palette.editorTheme, currentDocument())
+        if (focusMode && tab.mode != ViewMode.WORDPROCESSOR) exitFocus()
+        updateSymbolRow()
         // **本文が別物になったので検索を引き直す。** エンジンは切り替えの時点で検索を捨てている
         // （一致の位置は前の本文の中の数字で、そのままだと別の場所を指す）。
         searchedText = engine.getText().toString()
@@ -1193,27 +1398,31 @@ class MainActivity : Activity(), CommandHost {
     // ファイル
     // ------------------------------------------------------------------
 
-    private fun openFile(file: File) {
+    /**
+     * [quiet] は読めなかった時に知らせない（起動時の続きから）。[mode] はモードを拡張子の既定でなく指定する。
+     * タブを出せたら true。
+     */
+    private fun openFile(file: File, quiet: Boolean = false, mode: ViewMode? = null): Boolean {
         if (!StorageAccess.hasAccess()) {
-            StorageAccess.promptFor(this)
-            return
+            if (!quiet) StorageAccess.promptFor(this)
+            return false
         }
         // 同じファイルが既に開いていたらそれを出す。**同じものが2枚並ぶと、
         // どちらを保存したのか分からなくなる。**
         val already = tabs.indexOfFirst { it.file?.file?.absolutePath == file.absolutePath }
         if (already >= 0) {
             showTab(already)
-            return
+            return true
         }
 
         val document = try {
             TextFile.read(file, settings.maxOpenBytes(), settings.defaultCharset)
         } catch (e: TextFile.TooLargeException) {
-            toast("大きすぎて開けない（${e.size / 1024 / 1024}MB / 上限 ${settings.maxOpenMegabytes}MB）")
-            return
+            if (!quiet) toast("大きすぎて開けない（${e.size / 1024 / 1024}MB / 上限 ${settings.maxOpenMegabytes}MB）")
+            return false
         } catch (e: Exception) {
-            toast("開けなかった: ${e.message}")
-            return
+            if (!quiet) toast("開けなかった: ${e.message}")
+            return false
         }
 
         val tab = OpenTab(nextTabId++, engine.newDocument(document.text))
@@ -1223,6 +1432,8 @@ class MainActivity : Activity(), CommandHost {
         tab.language = settings.languageOf(file.name)
         // 文字コードと同じで、**推定して直すのではなく元に合わせる**。
         tab.lineSeparator = TextFile.dominantLineSeparator(document.text, settings.defaultLineSeparator)
+        // モードは拡張子で決める。覚えているのは続きから開く1件だけ（[mode]）。
+        tab.mode = mode ?: ViewMode.defaultFor(file.name)
 
         // **空のまま使われていないタブ1枚だけの状態なら、そこへ入れ替える。**
         // 起動直後に開くたびに「（無題）」が残るのを避ける。
@@ -1240,9 +1451,10 @@ class MainActivity : Activity(), CommandHost {
         }
         rememberDirectory(file.parentFile)
 
-        if (settings.wordWrap && settings.exceedsWrapLimit(engine)) {
+        if ((settings.wordWrap || tab.mode == ViewMode.WORDPROCESSOR) && settings.exceedsWrapLimit(engine)) {
             toast("${settings.wrapLineLimit}行を超えたので折り返しを切った")
         }
+        return true
     }
 
     /**
@@ -1255,19 +1467,111 @@ class MainActivity : Activity(), CommandHost {
         val tab = activeTab() ?: return false
         val document = tab.file ?: return false
         cleanUpBeforeSave(tab)
-        val text = engine.getText().toString()
-        try {
-            TextFile.write(document, text)
-        } catch (e: Exception) {
-            toast("保存できなかった: ${e.message}")
-            return false
+        val text = settledText() ?: return false
+        val shouldWrite = if (tab.mode == ViewMode.WORDPROCESSOR && text == tab.savedText) {
+            if (quiet) {
+                false
+            } else try {
+                val path = document.file.toPath()
+                val attrs = try {
+                    Files.readAttributes(path, BasicFileAttributes::class.java)
+                } catch (e: NoSuchFileException) {
+                    null
+                }
+                if (attrs == null) {
+                    true
+                } else if (!attrs.isRegularFile) {
+                    toast("保存できなかった: 通常のファイルではない")
+                    return false
+                } else {
+                    // 無変更の手動保存だけ、同じバイト数なら全内容を比較する。同時書込みの競合解決はしない。
+                    val encoded = document.encode(text)
+                    attrs.size() != encoded.size.toLong() || !Files.readAllBytes(path).contentEquals(encoded)
+                }
+            } catch (e: Exception) {
+                toast("保存できなかった: ${e.message}")
+                return false
+            }
+        } else {
+            true
+        }
+        if (shouldWrite) {
+            if (!writeTab(tab, document, text)) return false
         }
         tab.savedText = text
-        tab.dirty = false
+        tab.dirty = engine.getText().toString() != text
         if (!quiet) toast("保存した: ${document.file.name}")
         refreshTabs()
         refreshStatus()
         return true
+    }
+
+    /**
+     * 出ているタブの保存用本文。安全な本文を決められない変換中は null。
+     */
+    private fun settledText(): String? = engine.ime().settledText().also {
+        if (it == null) toast("保存できなかった: 変換中の安全な本文を決められない")
+    }
+
+    /**
+     * [document] へ [text] を書く。失敗したら知らせて false（タブの状態は触らない）。
+     * **ワープロのタブが既に在るファイルを上書きする時は、先に前の版を控える。**
+     * 控えを作れなければ上書きしない。
+     */
+    private fun writeTab(tab: OpenTab, document: TextFile.Document, text: String): Boolean {
+        try {
+            TextFile.write(document, text) { target ->
+                if (tab.mode != ViewMode.WORDPROCESSOR) return@write
+                try {
+                    previous.keep(target)
+                } catch (e: IOException) {
+                    throw IOException("前の版を控えに残せなかった（${e.message}）── 上書きしていない", e)
+                }
+            }
+        } catch (e: Exception) {
+            toast("保存できなかった: ${e.message}")
+            return false
+        }
+        return true
+    }
+
+    /**
+     * 画面を離れる時の保存。**書き換わっているワープロのタブは全部**（名前があるもの）、設定にかかわらず。
+     * コードのタブは今のまま ── 設定 `autoSave` が入っている時だけ、今のタブだけ。
+     * 無題のタブは書かない（名前を訊く画面を勝手に出さない）。
+     */
+    private fun saveOnLeaving() {
+        for (tab in tabs) {
+            val document = tab.file ?: continue
+            if (!tab.dirty) continue
+            if (tab === activeTab()) {
+                if (tab.mode == ViewMode.WORDPROCESSOR || settings.autoSave) saveActive(quiet = true)
+            } else if (tab.mode == ViewMode.WORDPROCESSOR) {
+                // 出ていないタブ。保存時の後始末（行末の空白など）は本文を直す操作なので、出ていないタブには掛けない。
+                val text = engine.textOf(tab.document).toString()
+                if (text == tab.savedText || writeTab(tab, document, text)) {
+                    tab.savedText = text
+                    tab.dirty = false
+                }
+            }
+        }
+    }
+
+    override fun openPreviousVersion() {
+        val file = activeTab()?.file?.file
+        val older = file?.let { runCatching { previous.read(it, settings.defaultCharset) }.getOrNull() }
+        if (older == null) {
+            toast("前の版は無い")
+            return
+        }
+        // 控えは無題の新しいタブへ開く。**控えにも元のファイルにも書き戻さない**（保存すれば名前を訊く）。
+        // 控えと同じ中身は既にディスクにあるので、未保存の印は付けない。
+        val tab = OpenTab(nextTabId++, engine.newDocument(older.text))
+        tab.savedText = older.text
+        tab.lineSeparator = TextFile.dominantLineSeparator(older.text, settings.defaultLineSeparator)
+        tab.mode = ViewMode.WORDPROCESSOR
+        tabs.add(tab)
+        jump { showTab(tabs.size - 1) }
     }
 
     /**
@@ -1371,7 +1675,7 @@ class MainActivity : Activity(), CommandHost {
             return false
         }
         cleanUpBeforeSave(tab)
-        val text = engine.getText().toString()
+        val text = settledText() ?: return false
         val document = when (val prepared = SaveAs.prepare(target, text, tab.file, settings.defaultCharset)) {
             is SaveAs.Prepared.Rejected -> {
                 toast(prepared.reason)
@@ -1379,15 +1683,10 @@ class MainActivity : Activity(), CommandHost {
             }
             is SaveAs.Prepared.Ready -> prepared.document
         }
-        try {
-            TextFile.write(document, text)
-        } catch (e: Exception) {
-            toast("保存できなかった: ${e.message}")
-            return false
-        }
+        if (!writeTab(tab, document, text)) return false
         tab.file = document
         tab.savedText = text
-        tab.dirty = false
+        tab.dirty = engine.getText().toString() != text
         // 名前が変わったので文法も引き直す（`.txt` を `.kt` で保存したら色が付く）。
         tab.language = settings.languageOf(target.name)
         // 改行コードは**本文に合わせる**。無題のタブは設定の既定で打たれている。
@@ -1402,16 +1701,23 @@ class MainActivity : Activity(), CommandHost {
     }
 
     /**
-     * 画面を離れるときに保存する（設定が入っているときだけ）。
+     * 画面を離れるときに保存する（[saveOnLeaving]）。続きからの記録もここで取る。
      *
      * **時間で走らせない。** 打っている最中に書き戻すと、母艦が同じファイルを開いている場合に
      * 中途半端な状態が Syncthing で流れる。区切りがはっきりしているのはここ一点だけ。
      */
     override fun onPause() {
         super.onPause()
+        // 計測（debug のみ）: 画面を離れる時に未確定の文字がまだ在ったか。台本が保存の中身と突き合わせる。
+        trace?.event(
+            "app", "onPause",
+            "composing", engine.ime().composingRange()?.let { "${it.start().index()}-${it.end().index()}" } ?: "none",
+        )
         freezeActiveDirty()
-        val tab = activeTab()
-        if (settings.autoSave && tab?.file != null && tab.dirty) saveActive(quiet = true)
+        saveOnLeaving()
+        rememberResumePoint()
+        trace?.event("app", "onPause.done")
+        trace?.flushNow()
     }
 
     override fun onResume() {
@@ -1540,6 +1846,9 @@ class MainActivity : Activity(), CommandHost {
     private fun onEditorChanged() {
         val tab = activeTab() ?: return
         val text = engine.getText().toString()
+        // **ここでは設定を入れ直さない。** エンジンは上限を超えた時点で自分で横へ戻っている。
+        // 変換の途中で入れ直すと IME がつなぎ直され、打っている字が落ちる（実機で2字欠けた）。
+        dropVerticalOverLimit(tab)
         val dirty = text != tab.savedText
         if (dirty != tab.dirty) {
             tab.dirty = dirty
@@ -1554,18 +1863,32 @@ class MainActivity : Activity(), CommandHost {
             searchedText = text
             searchBar.onTextEdited()
         }
-        refreshStatus()
+        refreshStatus(text)
+        // 変換が取り消されたとき、本文が変わる合図は「未確定の範囲がまだ残っている」うちに来る
+        // （範囲はその後で消える）。文字数がその古い範囲で数えられたままにならないよう、落ち着いた後でもう1回数える。
+        if (tab.mode == ViewMode.WORDPROCESSOR && engine.ime().isComposing) {
+            engine.asView().post { refreshStatus() }
+        }
     }
 
     /**
      * 状態表示を描き直す。**左 = 今の状態、右 = ファイルの属性**（見た目案 01）。
+     *
+     * ワープロのタブでは左に文字数を足す（選択中は「選択 / 全体」）。打つたびに全文を数え直す素朴な作りで、
+     * 本文を持っている呼び出し元（[onEditorChanged]）は [text] で渡す。
      */
-    private fun refreshStatus() {
+    private fun refreshStatus(text: String? = null) {
         val tab = activeTab()
         val selection = engine.getSelection()
+        val count = if (tab?.mode == ViewMode.WORDPROCESSOR) {
+            countLabel(text ?: engine.getText().toString(), selection)
+        } else {
+            null
+        }
         val state = buildString {
             append("行 ").append(selection.start().line() + 1)
             append(", 桁 ").append(selection.start().column() + 1)
+            if (count != null) append(" · ").append(count)
             if (tab?.dirty == true) append(" · ● 未保存")
             if (engine.ime().isComposing) append(" · 変換中")
         }
@@ -1582,12 +1905,32 @@ class MainActivity : Activity(), CommandHost {
             if (settings.wordWrap) append(" · 折り返し")
         }
         status.show(state, attributes)
+        status.showMode(if (tab?.mode == ViewMode.WORDPROCESSOR) {
+            "ワープロ・${if (tab.vertical) "縦" else "横"}"
+        } else (tab?.mode ?: ViewMode.CODE).label)
+        // 縦の集中画面では隅の文字数専用の帯を空ける。横の余白は変えない。
+        val frameParams = editorFrame.layoutParams as FrameLayout.LayoutParams
+        val countInset = if (focusMode && tab?.mode == ViewMode.WORDPROCESSOR && tab.vertical) focusCount.lineHeight + PAD else 0
+        if (frameParams.bottomMargin != countInset) {
+            frameParams.bottomMargin = countInset
+            editorFrame.layoutParams = frameParams
+        }
+        focusCount.text = count ?: ""
         // **変換中は記号キー列を黙らせる。** 状態表示と同じ合図で動かすので、
         // 「変換中」の文字と列の見た目がずれない。
         symbolRow.setComposing(engine.ime().isComposing)
         // 戻す・進むの押せる/押せないも打つたびに変わる ── 同じ合図で引き直す。
         menuBar.refreshQuick()
         refreshCharsetChip()
+    }
+
+    /** 「文字数 N」、選択中は「文字数 選択 / 全体」。変換中の未確定の文字は数えない。 */
+    private fun countLabel(text: String, selection: TextRange): String {
+        val composing = engine.ime().composingRange()?.let { it.start().index() until it.end().index() }
+        val total = CharCount.count(text, exclude = composing)
+        if (selection.isEmpty()) return "文字数 $total"
+        val selected = CharCount.count(text, selection.start().index(), selection.end().index(), composing)
+        return "文字数 $selected / $total"
     }
 
     /** 右端の文字コードの札。**無題のタブは押せない**（`file.encoding` の available と同じ判断）。 */
@@ -1650,6 +1993,11 @@ class MainActivity : Activity(), CommandHost {
      * そこを所有権の根拠にする。
      */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // 集中の画面を物理キーボードの Esc で出る。**変換中の Esc は IME のもの**（変換の取り消し）なので触らない。
+        if (focusMode && event.keyCode == KeyEvent.KEYCODE_ESCAPE && !engine.ime().isComposing) {
+            if (event.action == KeyEvent.ACTION_DOWN) exitFocus()
+            return true
+        }
         // 被さっている画面から順に訊く。**開いているものが1つだけ**なので順番で悩む余地は無い。
         if (commandPalette.consumeKey(event)) return true
         if (projectSearch.consumeKey(event)) return true
@@ -1687,7 +2035,14 @@ class MainActivity : Activity(), CommandHost {
 
     private companion object {
         const val KEY_LAST_DIR = "last_dir"
+        const val KEY_RESUME_PATH = "resume_path"
+        const val KEY_RESUME_OFFSET = "resume_offset"
+        const val KEY_RESUME_MODE = "resume_mode"
+        const val KEY_RESUME_VERTICAL = "resume_vertical"
         const val PAD = 12
+
+        const val DEBUG_EXTRA_OPEN = "kiwa.debug.open"
+        const val DEBUG_EXTRA_TRACE = "kiwa.debug.trace"
 
         /** 選んでいた文字を検索語へ写す上限。長い選択は「探したい語」ではない。 */
         const val MAX_SEED_LENGTH = 200

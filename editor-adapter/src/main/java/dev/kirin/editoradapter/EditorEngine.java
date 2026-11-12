@@ -28,6 +28,9 @@ import android.view.View;
  */
 public interface EditorEngine {
 
+    /** 縦書きで扱える文字数の上限（UTF-16）。超過時は横書きで表示する。 */
+    int MAX_VERTICAL_CHARS = 100_000;
+
     /** 画面に載せるための View。実体はエンジンのビュー。 */
     View asView();
 
@@ -108,6 +111,13 @@ public interface EditorEngine {
      * 文書が作り直され、{@link EditorDocument} が持っている Undo 履歴が消える。
      */
     EditorDocument newDocument(CharSequence text);
+
+    /**
+     * 文書の今の本文。<b>画面に出ていない文書も読める</b> ── 画面を離れるときに、
+     * 出ていない未保存のタブも書き出すための口。出ている文書なら {@link #getText()} と同じ。
+     * 札（{@link EditorDocument}）自身に本文を生やさないのは、上の分担を保つため。
+     */
+    CharSequence textOf(EditorDocument document);
 
     /**
      * その文書を画面に出す。<b>切り替え前の文書のスクロール位置は覚えておき、
@@ -274,6 +284,14 @@ public interface EditorEngine {
      */
     void setWordWrap(boolean enabled);
 
+    /**
+     * 縦書き表示・編集モード。
+     *
+     * <p>ワープロタブでのみ有効化される。
+     * コードモードや通常の横書きでは {@code false}。
+     */
+    void setVertical(boolean enabled);
+
     // ------------------------------------------------------------------
     // 一般的なエディタの設定（2026-10-02 に足した）
     //
@@ -325,6 +343,15 @@ public interface EditorEngine {
 
     /** 横へスクロールしたときに、行番号を左端へ留めておくか。 */
     void setPinLineNumbers(boolean pinned);
+
+    /**
+     * 打っている行を画面の縦の中ほどに保つか（タイプライタースクロール）。
+     *
+     * <p>カーソルが動いて「見える所へ寄せる」たびに、最小限ではなく中ほどへ寄せる。
+     * <b>ファイルの先頭近くと終わり近くでは、スクロールできる範囲で止まる</b>
+     * （無理に中ほどへ寄せない）。指で動かしたスクロールは邪魔しない。
+     */
+    void setTypewriter(boolean enabled);
 
     // ------------------------------------------------------------------
     // IME 境界

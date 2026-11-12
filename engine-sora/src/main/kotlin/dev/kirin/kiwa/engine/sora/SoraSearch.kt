@@ -3,7 +3,6 @@ package dev.kirin.kiwa.engine.sora
 import dev.kirin.editoradapter.EditorSearch
 import dev.kirin.editoradapter.SearchQuery
 import io.github.rosemoe.sora.event.PublishSearchResultEvent
-import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.EditorSearcher
 import java.util.regex.PatternSyntaxException
 
@@ -25,7 +24,7 @@ import java.util.regex.PatternSyntaxException
  * 検索は 0 件が正常値になる機能なので、ここを混ぜると
  * 「当たらない」と出ているものの意味が読めなくなる（E10b で同じ形を踏んだ）。
  */
-internal class SoraSearch(private val editor: CodeEditor) : EditorSearch {
+internal class SoraSearch(private val editor: KiwaCodeEditor) : EditorSearch {
 
     private val searcher: EditorSearcher get() = editor.searcher
 
@@ -71,15 +70,17 @@ internal class SoraSearch(private val editor: CodeEditor) : EditorSearch {
         }
         return try {
             searcher.search(query.pattern(), optionsOf(query))
+            editor.verticalSearchValid = true
             searching = true
             lastError = null
             true
         } catch (e: PatternSyntaxException) {
-            // **前の結果はそのまま残す。** 正規表現は打っている途中が壊れているのが普通で
-            // （`(` まで打った時点など）、そのたびにハイライトが消えると打てない。
+            // 横は従来どおり前の結果を残す。縦は不正な条件の間、古い背景を描かない。
+            editor.verticalSearchValid = false
             lastError = "正規表現が読めない: ${e.description ?: e.message}"
             false
         } catch (e: IllegalArgumentException) {
+            editor.verticalSearchValid = false
             lastError = e.message ?: "検索できない語"
             false
         }
@@ -89,6 +90,7 @@ internal class SoraSearch(private val editor: CodeEditor) : EditorSearch {
         searching = false
         // hasQuery が false でも安全（`stopSearch` は状態を見ない）。
         searcher.stopSearch()
+        editor.verticalSearchValid = false
     }
 
     override fun hasQuery(): Boolean = searcher.hasQuery()

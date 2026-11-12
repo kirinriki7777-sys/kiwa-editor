@@ -1,18 +1,22 @@
 # Kiwa
 
-A code editor for Android tablets where Japanese input and hardware keyboards just work.
+A code editor and word processor for Android tablets where Japanese input and hardware keyboards just work.
 
 [日本語の README](README.ja.md)
 
 Most Android code editors break in small ways once an input method (IME) is involved. The text being converted is not highlighted, Ctrl+Z replays every step of a conversion, Tab indents half-typed text, or a hardware keyboard disables conversion completely. Kiwa is built around fixing exactly that. It also never changes the bytes of a file you did not edit: encoding, BOM and line endings stay as they were.
 
+On the same foundation there is a word processor mode for writing prose. It opens text in a readable typeface and line height, and can write vertically (縦書き).
+
 > **The user interface is in Japanese only.** Menus, settings and messages are Japanese. Translations are not planned yet.
 
 ## Status
 
-Early (0.1.0). Developed and tested on one device, a Redmi Pad 2 Pro with Gboard and a hardware keyboard. Requires Android 14 or newer.
+Early (0.2.0). Developed and tested on one device, a Redmi Pad 2 Pro with Gboard and a hardware keyboard. Requires Android 14 or newer.
 
 ## Features
+
+### Code editor
 
 - Tabs, a file tree, and a menu bar
 - Command palette: files by name, commands with `>`, go to line with `:`
@@ -24,6 +28,19 @@ Early (0.1.0). Developed and tested on one device, a Redmi Pad 2 Pro with Gboard
 - Eight colour themes (four dark, four light), plus one that follows the system
 - Opens files anywhere on internal storage and SD cards
 
+### Word processor
+
+Each tab can be switched between the code editor and the word processor (`.txt` files open as the word processor). Either way, what is saved is plain text.
+
+- Vertical writing (縦書き): Japanese text upright, half-width Latin letters rotated, one- and two-digit numbers set upright in the column (縦中横). Brackets, punctuation and the long vowel mark use the font's vertical glyphs, and line-start and line-end prohibition rules (禁則) are kept. Up to 100,000 characters. It only changes the view; the text itself is never rewritten
+- Character count (line breaks and spaces are not counted; the count of the selection is shown while selecting)
+- A focus screen (only the text and the count remain) and typewriter scrolling (the line being typed stays near the middle of the screen)
+- A typeface (gothic, mincho or monospace), text size and line height for the word processor, kept apart from the code editor's
+- Saves when you leave the screen, and keeps one previous version from before the overwrite
+- On launch, reopens the file you were last writing, at the position where you stopped
+
+There is no formatting: no ruby, emphasis marks, manuscript grid or pagination.
+
 ## Install
 
 Download the APK from [Releases](../../releases) and install it.
@@ -31,7 +48,7 @@ Download the APK from [Releases](../../releases) and install it.
 - The release APK is signed with a certificate whose SHA-256 fingerprint is
   `aefe6fdc5fae9f7f750887686021f7597f13ad122a4f896cf3651676f60bc6e4`.
   Check it with `apksigner verify --print-certs Kiwa-*.apk`.
-- Kiwa asks for **All files access** (`MANAGE_EXTERNAL_STORAGE`). A code editor needs to open files where they are, including on SD cards.
+- Kiwa asks for **All files access** (`MANAGE_EXTERNAL_STORAGE`). It needs to open files where they are, including on SD cards.
 - Kiwa has no network permission. It collects and sends nothing. See [PRIVACY.md](PRIVACY.md).
 
 ## Build
@@ -76,7 +93,7 @@ Three modules with one guarded boundary. Kiwa uses [Sora Editor](https://github.
 
 Kiwa was developed with heavy use of AI models. Most of the code, comments and documentation were written by AI under the maintainer's direction. The maintainer tested it on a real device.
 
-- Claude (Anthropic): Opus 5, Opus 5.5, Sonnet 5
+- Claude (Anthropic): Opus 5, Opus 5.5, Sonnet 5, Fable 5.2
 - GPT (OpenAI): Sol, Luna
 - Gemini (Google): Gemini 3.8 Flash. The launcher icon is based on an image generated with Gemini.
 
@@ -84,7 +101,7 @@ Kiwa was developed with heavy use of AI models. Most of the code, comments and d
 
 Kiwa is licensed under the [Apache License 2.0](LICENSE). See also [NOTICE](NOTICE).
 
-It bundles third-party components under their own licenses, including Sora Editor (LGPL-2.1-or-later) and TextMate grammars (MIT and others). The full list and license texts are in [third_party/](third_party/), and inside the app under 設定 → このアプリについて → ライセンス.
+It bundles third-party components under their own licenses, including Sora Editor (LGPL-2.1-or-later) and TextMate grammars (MIT and others). The vertical writing view borrows its approach from [MMTextKit](https://github.com/lzdev42/MMTextKit) (MIT). The full list and license texts are in [third_party/](third_party/), and inside the app under 設定 → このアプリについて → ライセンス.
 
 ## The name
 

@@ -34,14 +34,15 @@ object PaletteItems {
         commands.forPalette().map { command ->
             val state = command.detail
             PaletteItem(
-                title = command.label,
+                title = command.title,
                 detail = buildString {
                     if (command.planned) append("まだ作っていない · ")
                     else if (state.isNotEmpty()) append(state).append(" · ")
                     append(command.id)
                 },
                 // id でも引けるようにする ── `>save` は打てるが「ほぞん」はローマ字では打てない。
-                searchText = "${command.label} ${command.id}",
+                // 名前が状態で替わるもの（縦書き ↔ 横書き）は、どちらの名前でも引ける。
+                searchText = listOf(command.title, command.label, command.id).distinct().joinToString(" "),
                 enabled = command.available,
                 run = { command.run() }
             )

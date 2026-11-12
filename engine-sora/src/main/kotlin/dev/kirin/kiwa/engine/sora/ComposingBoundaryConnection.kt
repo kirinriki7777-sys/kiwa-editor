@@ -105,8 +105,10 @@ internal class ComposingBoundaryConnection(
             "hasTextAttribute", false
         )
         beforeComposingEdit()
+        boundary.beforeComposingText()
         val handled = editor.duringComposingText { super.setComposingText(text, newCursorPosition) }
-        afterComposingEdit(text)
+        boundary.afterComposingText(handled, text)
+        afterComposingEdit(handled, text)
         return exit("IC.setComposingText", call, handled)
     }
 
@@ -126,15 +128,19 @@ internal class ComposingBoundaryConnection(
             "hasTextAttribute", textAttribute != null
         )
         beforeComposingEdit()
+        boundary.beforeComposingText()
         val handled = editor.duringComposingText { super.setComposingText(text, newCursorPosition, textAttribute) }
-        afterComposingEdit(text)
+        boundary.afterComposingText(handled, text)
+        afterComposingEdit(handled, text)
         return exit("IC.setComposingText", call, handled)
     }
 
     override fun setComposingRegion(start: Int, end: Int): Boolean {
         val call = enter("IC.setComposingRegion", "start", start, "end", end, "hasTextAttribute", false)
         beforeComposingEdit()
+        boundary.beforeComposingRegion()
         val handled = super.setComposingRegion(start, end)
+        boundary.afterComposingRegion(handled)
         if (!editor.hasComposingText()) endComposing()
         return exit("IC.setComposingRegion", call, handled)
     }
@@ -145,7 +151,9 @@ internal class ComposingBoundaryConnection(
             "start", start, "end", end, "hasTextAttribute", textAttribute != null
         )
         beforeComposingEdit()
+        boundary.beforeComposingRegion()
         val handled = super.setComposingRegion(start, end, textAttribute)
+        boundary.afterComposingRegion(handled)
         if (!editor.hasComposingText()) endComposing()
         return exit("IC.setComposingRegion", call, handled)
     }
@@ -224,7 +232,7 @@ internal class ComposingBoundaryConnection(
         syncScope()
     }
 
-    private fun afterComposingEdit(text: CharSequence?) {
+    private fun afterComposingEdit(handled: Boolean, text: CharSequence?) {
         if (!editor.hasComposingText()) {
             // 空文字を渡されると Sora は内部で finishComposingText() を呼ぶ
             // （widget/EditorInputConnection.java:475-478）。それは wrapper を通らないので、
@@ -232,19 +240,19 @@ internal class ComposingBoundaryConnection(
             endComposing()
             return
         }
-        val body = text ?: return
-        // Sora はどの分岐を通ってもカーソルを composing の終端に置く
-        // （insert / delete / replace / 変更なし の4分岐 = widget/EditorInputConnection.java:463-478）。
-        // なので終端はカーソルから読める。範囲を自前で数え上げない。
-        val end = editor.cursor.left
-        val start = end - body.length
-        if (start < 0) {
+        if (!handled) return
+        val range = boundary.validComposingRange()
+        if (range == null) {
             boundary.clearComposingDecorations()
-            boundary.forgetComposingRange()
             return
         }
-        boundary.noteComposingRange(start, end)
+        val start = range.startIndex
+        val end = range.endIndex
         trace?.event("boundary", "composing.range", "start", start, "end", end)
+        val body = text ?: run {
+            boundary.clearComposingDecorations()
+            return
+        }
         val decorations = ComposingDecorations.extract(body, start)
         if (decorations.isEmpty()) {
             boundary.clearComposingDecorations()
@@ -257,7 +265,6 @@ internal class ComposingBoundaryConnection(
         if (!composing) return
         composing = false
         boundary.clearComposingDecorations()
-        boundary.forgetComposingRange()
         boundary.setKeyBindingsEnabled(true)
         syncScope()
     }

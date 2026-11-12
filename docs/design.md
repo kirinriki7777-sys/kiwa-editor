@@ -51,6 +51,24 @@ Settings are stored in `filesDir/settings.json`. Unknown keys are dropped and mi
 
 **Commands.** Every action on screen comes from the table in `command/Commands.kt`. The menu bar, the command palette and the symbol key row all read the same table, so one action cannot have two implementations. `tools/check-commands.sh` checks this, and checks that `tools/tables/commands.md` and the code list the same command ids.
 
+## A word processor on the same engine
+
+Each tab is either a code editor or a word processor. The word processor is not a second editor: it is the same Sora document with the code decorations (line numbers, highlighting, the symbol key row) turned off and its own typeface, text size and line height. What is saved is plain text, and the rules in "Never damage a file" apply unchanged.
+
+- **Saving happens when you leave the screen, never on a timer.** A timer would write half-typed states back to the file.
+- **One previous version is kept** in app-private storage before each overwrite. Nothing is created next to the file.
+- **On launch, the last file you were writing reopens** at the position where you stopped.
+
+## Vertical writing is a view, not a document
+
+Vertical writing (縦書き) changes only how the text is drawn and how touches and arrow keys map to positions. The document, the IME connection, the undo history and the save path stay Sora's, so everything in "What the boundary takes care of" holds in vertical mode too. The text itself is never rewritten (no half-width to full-width conversion, for example).
+
+- **Geometry is plain Kotlin.** `VerticalLayout.kt` imports neither Android nor Sora. It lays out columns from right to left and answers three questions: which offset is at a point, where the cursor for an offset is, and where an arrow key leads. It is tested on the host JVM.
+- **The rules come from the platform, not from tables.** Character orientation is ICU's `Vertical_Orientation` property (UTR #50). Whether the font has a vertical form for a character is found by shaping it with and without the `vert` feature and comparing glyph ids. Columns break only where ICU's line break iterator (`ja@lb=strict`) allows, which keeps punctuation off the start of a column. One- and two-digit numbers are set upright in the column.
+- **An edit re-lays out only the paragraphs it touched.** Geometry is kept per paragraph (one Sora line), and each drawn column is cached, so typing in a long text stays light. Above 100,000 characters the tab stays horizontal and says so.
+
+The approach of keeping the input component and attaching drawing and input mapping separately follows [MMTextKit](https://github.com/lzdev42/MMTextKit) (MIT).
+
 ## Tracing input (debug builds only)
 
 Debug builds can record what happens at the IME boundary as JSONL. Start a session from the "計測" (trace) command.

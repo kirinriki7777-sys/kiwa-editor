@@ -36,6 +36,16 @@ class PaletteItemsTest {
     }
 
     @Test
+    fun `縦の時は 横書き と出て_どちらの名前でも引ける`() {
+        val items = PaletteItems.forCommands(Commands.build(FakeCommandHost(wp = true, vertical = true)))
+        val item = items.first { it.searchText.endsWith("view.vertical") }
+        assertEquals("横書き", item.title)
+        for (word in listOf("横書き", "縦書き")) {
+            assertTrue("$word で引けない", Fuzzy.rank(items, word, items.size) { it.searchText }.any { it === item })
+        }
+    }
+
+    @Test
     fun `どのコマンドも id を打てば引ける`() {
         val commands = commands()
         val items = PaletteItems.forCommands(commands)

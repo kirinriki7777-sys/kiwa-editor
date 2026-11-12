@@ -1,0 +1,6 @@
+Adds a word processor mode.
+
+- Switch each tab between the code editor and the word processor (.txt opens as the word processor)
+- Vertical writing: glyph orientation, vertical glyph forms, line-breaking rules, upright numbers. Up to 100,000 characters
+- Character count, a focus screen, typewriter scrolling
+- Saves when you leave the screen, keeps one previous version, and reopens where you stopped

@@ -8,7 +8,10 @@ import dev.kirin.editoradapter.TextPosition
 import dev.kirin.editoradapter.TextRange
 import io.github.rosemoe.sora.lang.styling.span.SpanColorResolver
 import io.github.rosemoe.sora.lang.styling.span.SpanExtAttrs
+import io.github.rosemoe.sora.text.ComposingText
+import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
+import java.lang.reflect.Field
 
 /**
  * [ImeBoundary] の Sora 実装。
@@ -32,20 +35,13 @@ internal class SoraImeBoundary(
         this.theme = theme
     }
 
-    /**
-     * composing の範囲。**自前で数え上げているのではなく、更新のたびにエンジンの
-     * カーソルから引き直した値**を置いてある（[ComposingBoundaryConnection.noteComposingRange]）。
-     * Sora の `ComposingText` は package-private で外から読めないので、読める形に写している。
-     */
-    private var composingStart = -1
-    private var composingEnd = -1
+    /** 変換中に保存する本文を決める状態。エディタに1組。 */
+    private val settled = SettledComposing()
 
     fun wrap(base: InputConnection): InputConnection {
         trace?.event("boundary", "connection.new")
         // 接続が作り直されると Sora 側が resetBatchEdit() するので、こちらの段数も 0 に戻す。
         scopeOpen = false
-        composingStart = -1
-        composingEnd = -1
         editor.setKeyBindingsEnabled(true)
         return ComposingBoundaryConnection(base, editor, this)
     }
@@ -202,30 +198,74 @@ internal class SoraImeBoundary(
     override fun isComposing(): Boolean = editor.hasComposingText()
 
     override fun composingRange(): TextRange? {
-        if (!editor.hasComposingText()) return null
-        if (composingStart < 0 || composingEnd < composingStart) return null
+        val range = validComposingRange() ?: return null
         val content = editor.text
-        val length = content.length
-        if (composingEnd > length) return null
-        val start = content.indexer.getCharPosition(composingStart)
-        val end = content.indexer.getCharPosition(composingEnd)
+        val start = content.indexer.getCharPosition(range.startIndex)
+        val end = content.indexer.getCharPosition(range.endIndex)
         return TextRange(
             TextPosition(start.line, start.column, start.index),
             TextPosition(end.line, end.column, end.index)
         )
     }
 
-    internal fun noteComposingRange(start: Int, end: Int) {
-        composingStart = start
-        composingEnd = end
+    override fun settledText(): String? =
+        settled.settledText(editor.text, editor.hasComposingText(), soraComposingText())
+
+    internal fun soraComposingText(): ComposingText? {
+        val icField = INPUT_CONNECTION_FIELD ?: return null
+        val ctField = COMPOSING_TEXT_FIELD ?: return null
+        return runCatching {
+            val ic = icField.get(editor) ?: return null
+            ctField.get(ic) as? ComposingText
+        }.getOrNull()
     }
 
-    internal fun forgetComposingRange() {
-        composingStart = -1
-        composingEnd = -1
+    internal fun validComposingRange(): ComposingText? {
+        if (!editor.hasComposingText()) return null
+        val range = soraComposingText() ?: return null
+        val content = editor.text
+        if (!inBounds(content, range)) return null
+        return range
     }
 
-    private companion object {
+    internal fun beforeComposingText() {
+        settled.beforeComposingText(
+            editor.text,
+            editor.hasComposingText(),
+            soraComposingText(),
+            editor.cursor.left,
+            editor.cursor.right
+        )
+    }
+
+    internal fun afterComposingText(handled: Boolean, text: CharSequence?) {
+        settled.afterComposingText(
+            editor.text,
+            editor.hasComposingText(),
+            soraComposingText(),
+            handled,
+            text
+        )
+    }
+
+    internal fun beforeComposingRegion() {
+        settled.beforeComposingRegion(
+            editor.text,
+            editor.hasComposingText(),
+            soraComposingText()
+        )
+    }
+
+    internal fun afterComposingRegion(handled: Boolean) {
+        settled.afterComposingRegion(
+            editor.text,
+            editor.hasComposingText(),
+            soraComposingText(),
+            handled
+        )
+    }
+
+    internal companion object {
         /** これ以上の alpha を「変換対象の文節」と読む。実測は 0x66 と 0x19 で、間に十分な開きがある。 */
         const val ACTIVE_ALPHA_THRESHOLD = 0x40
 
@@ -233,5 +273,13 @@ internal class SoraImeBoundary(
         const val LIGHT_INACTIVE_ALPHA = 0x22
         const val DARK_ACTIVE_ALPHA = 0x99
         const val DARK_INACTIVE_ALPHA = 0x4D
+
+        val INPUT_CONNECTION_FIELD: Field? = runCatching {
+            CodeEditor::class.java.getDeclaredField("inputConnection").apply { isAccessible = true }
+        }.getOrNull()
+
+        val COMPOSING_TEXT_FIELD: Field? = runCatching {
+            INPUT_CONNECTION_FIELD?.type?.getDeclaredField("composingText")?.apply { isAccessible = true }
+        }.getOrNull()
     }
 }

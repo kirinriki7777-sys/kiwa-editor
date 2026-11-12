@@ -222,13 +222,17 @@ object TextFile {
      * 決まった名前だと、同じ名前の別のファイルを上書きして rename で消してしまう。
      * 片付けるのも自分が作ったものだけ。頭の `.` は、`createTempFile` が3文字未満の接頭辞を断るため
      * （1文字の名前のファイルでも保存できるように）。
+     *
+     * [beforeReplace] は差し替えの直前に元のファイルを渡して呼ぶ（上書き前の版を控える口。[PreviousVersion.keep]）。
      */
-    fun write(document: Document, newText: String) {
+    fun write(document: Document, newText: String, beforeReplace: (File) -> Unit = {}) {
         val bytes = document.encode(newText)
         val target = document.file
         val temp = File.createTempFile(".${target.name}.", ".kiwa-tmp", target.parentFile)
         try {
             temp.writeBytes(bytes)
+            // 差し替えの直前（新しい中身が書けた後）。ここが投げたら差し替えず、元のファイルはそのまま。
+            beforeReplace(target)
             if (!temp.renameTo(target)) {
                 // 同じディレクトリなら普通は成功する。失敗したら中身を写す。
                 temp.copyTo(target, overwrite = true)

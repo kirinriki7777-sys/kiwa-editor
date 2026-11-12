@@ -11,7 +11,9 @@ internal class FakeCommandHost(
     private val drawer: Boolean = false,
     private val wrap: Boolean = false,
     private val back: Boolean = true,
-    private val forward: Boolean = true
+    private val forward: Boolean = true,
+    private val wp: Boolean = false,
+    var vertical: Boolean = false
 ) : CommandHost {
     val calls = ArrayList<String>()
     val notYetFor = ArrayList<String>()
@@ -27,6 +29,10 @@ internal class FakeCommandHost(
     override fun toggleWrap() { calls.add("toggleWrap") }
     override fun chooseLanguage() { calls.add("chooseLanguage") }
     override fun chooseEncoding() { calls.add("chooseEncoding") }
+    override fun toggleMode() { calls.add("toggleMode") }
+    override fun toggleVertical() { calls.add("toggleVertical") }
+    override fun openPreviousVersion() { calls.add("openPreviousVersion") }
+    override fun enterFocus() { calls.add("enterFocus") }
     override fun openPalette() { calls.add("openPalette") }
     override fun openPaletteForLine() { calls.add("openPaletteForLine") }
     override fun openSearch() { calls.add("openSearch") }
@@ -54,5 +60,8 @@ internal class FakeCommandHost(
     override fun charsetLabel(): String = "UTF-8"
     override fun drawerOpen(): Boolean = drawer
     override fun wordWrap(): Boolean = wrap
+    override fun modeLabel(): String = if (wp) "ワープロ" else "コード"
+    override fun wordProcessor(): Boolean = wp
+    override fun isVertical(): Boolean = vertical
     override fun hasTrace(): Boolean = trace
 }

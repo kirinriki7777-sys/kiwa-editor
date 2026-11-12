@@ -5,6 +5,7 @@ import dev.kirin.editoradapter.EditorTheme
 import dev.kirin.kiwa.file.Languages
 import dev.kirin.kiwa.symbols.SymbolKeys
 import dev.kirin.kiwa.ui.ThemeChoice
+import dev.kirin.kiwa.view.ViewMode
 import org.json.JSONObject
 
 /**
@@ -65,6 +66,15 @@ data class EditorSettings(
     val stickyScroll: Boolean = true,
     /** 横スクロールしても行番号を左端に留める。 */
     val pinLineNumbers: Boolean = false,
+
+    // ------------------------------------------------------------------ ワープロ
+    /**
+     * ワープロのタブの書体・文字の大きさ・行間。**コードとは別に持つ**（文章を読む字と、コードを読む字は違う）。
+     * 既定は ゴシック・コードの既定と同じ大きさ・行間 1.6。
+     */
+    val wpFont: String = "sans",
+    val wpFontSizeSp: Float = 14f,
+    val wpLineSpacing: Float = 1.6f,
 
     // ------------------------------------------------------------------ 記号キー列
     /**
@@ -174,7 +184,11 @@ data class EditorSettings(
          * このファイルが使っている改行コード。null なら [defaultLineSeparator]。
          * **推定して直すのではなく、元に合わせる**ためのもの。
          */
-        val lineSeparator: String?
+        val lineSeparator: String?,
+        /** このタブの見せ方。ワープロでは行番号・色付けなど、コード向けの飾りを出さない。 */
+        val mode: ViewMode = ViewMode.CODE,
+        /** 縦書き。ワープロのタブでのみ有効。メモリ内だけで持ち、設定JSONには保存しない。 */
+        val vertical: Boolean = false
     )
 
     // ------------------------------------------------------------------
@@ -192,31 +206,39 @@ data class EditorSettings(
      * @param document 開いている文書。null なら未オープン（既定で埋める）
      */
     fun applyTo(engine: EditorEngine, editorTheme: EditorTheme, document: Document?) {
+        // **モードを変えるのも「設定を入れる場面」の1つ**（同じ口を通る）。
+        // ワープロのタブは、コード向けの飾りを全部消して、書体・大きさ・行間をワープロ用に替える。
+        val wp = document?.mode == ViewMode.WORDPROCESSOR
         engine.setTheme(editorTheme)
-        engine.setTextSize(fontSizeSp)
-        engine.setFont(font)
-        engine.setLineNumbersVisible(showLineNumbers)
+        engine.setTextSize(if (wp) wpFontSizeSp else fontSizeSp)
+        engine.setFont(if (wp) wpFont else font)
+        engine.setLineNumbersVisible(showLineNumbers && !wp)
         engine.setShowInvisibles(showInvisibles)
-        engine.setHighlightCurrentLine(highlightCurrentLine)
-        engine.setLineSpacing(lineSpacing)
+        engine.setHighlightCurrentLine(highlightCurrentLine && !wp)
+        engine.setLineSpacing(if (wp) wpLineSpacing else lineSpacing)
         engine.setCursorBlink(cursorBlink)
-        engine.setHighlightMatchingBrackets(highlightMatchingBrackets)
-        engine.setIndentGuides(indentGuides)
-        engine.setStickyScroll(stickyScroll)
+        engine.setHighlightMatchingBrackets(highlightMatchingBrackets && !wp)
+        engine.setIndentGuides(indentGuides && !wp)
+        engine.setStickyScroll(stickyScroll && !wp)
         engine.setPinLineNumbers(pinLineNumbers)
         engine.setAutoClosePairs(autoClosePairs)
         engine.setAutoIndent(autoIndent)
+        engine.setTypewriter(wp)
+        engine.setVertical(wp && (document?.vertical == true))
 
         // 言語は文字コードと同じ扱い ── 開いたファイルが決めるもので、設定は上書きの表しか持たない。
-        engine.setLanguage(document?.language)
+        // ワープロは言語を選ばない素の文字（色を付けない）。
+        val language = if (wp) null else document?.language
+        engine.setLanguage(language)
         // 言語より後に入れる**必要は無い**（エンジンが言語を替えても保持する契約）が、
         // 順番に頼らないで済むように、ここでも言語の後に置いておく。
-        val indent = indentFor(document?.language)
+        val indent = indentFor(language)
         engine.setIndent(indent.first, indent.second)
 
         engine.setLineSeparator(document?.lineSeparator ?: defaultLineSeparator)
-        // 折り返しは行数で切る。判断は呼び出し側（＝ここ）の責務。
-        engine.setWordWrap(wordWrap && !exceedsWrapLimit(engine))
+        // 折り返しは行数で切る。判断は呼び出し側（＝ここ）の責務。ワープロは折り返しを入れる
+        // （上限を超えたら、コードと同じく切る ── 上限を外すと 20,000 行で 1 フレームの 3.4 倍掛かる）。
+        engine.setWordWrap((wp || wordWrap) && !exceedsWrapLimit(engine))
     }
 
     /** 折り返しを切るべき大きさか。行数はエンジンに聞く。 */
@@ -268,6 +290,9 @@ data class EditorSettings(
         put("wrapLineLimit", wrapLineLimit)
         put("fullscreen", fullscreen)
         put("lineSpacing", lineSpacing.toDouble())
+        put("wpFont", wpFont)
+        put("wpFontSizeSp", wpFontSizeSp.toDouble())
+        put("wpLineSpacing", wpLineSpacing.toDouble())
         put("cursorBlink", cursorBlink)
         put("highlightMatchingBrackets", highlightMatchingBrackets)
         put("indentGuides", indentGuides)
@@ -340,6 +365,12 @@ data class EditorSettings(
                 fullscreen = json.optBoolean("fullscreen", defaults.fullscreen),
                 lineSpacing = json.optDouble("lineSpacing", defaults.lineSpacing.toDouble())
                     .toFloat().takeIf { !it.isNaN() }?.coerceIn(1f, 3f) ?: defaults.lineSpacing,
+                wpFont = json.optString("wpFont", defaults.wpFont).takeIf { name -> FONTS.any { it.first == name } }
+                    ?: defaults.wpFont,
+                wpFontSizeSp = json.optDouble("wpFontSizeSp", defaults.wpFontSizeSp.toDouble())
+                    .toFloat().takeIf { !it.isNaN() }?.coerceIn(6f, 48f) ?: defaults.wpFontSizeSp,
+                wpLineSpacing = json.optDouble("wpLineSpacing", defaults.wpLineSpacing.toDouble())
+                    .toFloat().takeIf { !it.isNaN() }?.coerceIn(1f, 3f) ?: defaults.wpLineSpacing,
                 cursorBlink = json.optBoolean("cursorBlink", defaults.cursorBlink),
                 highlightMatchingBrackets = json.optBoolean(
                     "highlightMatchingBrackets", defaults.highlightMatchingBrackets

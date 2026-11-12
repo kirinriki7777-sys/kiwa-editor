@@ -35,6 +35,7 @@ class TitledFrame(context: Context) : FrameLayout(context) {
 
     private var title: String = ""
     private var content: View? = null
+    private var bare = false
 
     private val borderPaint = Paint().apply {
         style = Paint.Style.STROKE
@@ -64,6 +65,23 @@ class TitledFrame(context: Context) : FrameLayout(context) {
 
     fun setTitle(text: String) {
         title = text
+        invalidate()
+    }
+
+    /**
+     * 枠も見出しも描かず、中身を端まで広げる（集中の画面）。中身の View は同じものを使い続けるので、
+     * 入れ直しにならず IME のつなぎも切れない。
+     */
+    fun setBare(bare: Boolean) {
+        if (this.bare == bare) return
+        this.bare = bare
+        (content?.layoutParams as? LayoutParams)?.let {
+            it.topMargin = if (bare) 0 else titleHeight
+            it.leftMargin = if (bare) 0 else inset
+            it.rightMargin = if (bare) 0 else inset
+            it.bottomMargin = if (bare) 0 else inset
+            content?.layoutParams = it
+        }
         invalidate()
     }
 
@@ -101,6 +119,7 @@ class TitledFrame(context: Context) : FrameLayout(context) {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (bare) return
         val half = borderPaint.strokeWidth / 2
         val top = titleHeight / 2f
         canvas.drawRect(half, top, width - half, height - half, borderPaint)

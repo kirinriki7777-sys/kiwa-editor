@@ -19,6 +19,9 @@ import android.widget.TextView
  * 右端に文字コードの札（[charset]、2026-10-02）を置く。**押すと `file.encoding` が走る** ──
  * VS Code の状態表示と同じ場所・同じ振る舞い。押せる札なので属性の文字とは別の View にした。
  * 何を走らせるかは [onCharsetClick] で外から渡す（**入口も表を通す**ため、ここは知らない）。
+ *
+ * その左隣にタブのモード名の札（[showMode]、「コード」「ワープロ・縦/横」）。**押すと `view.mode` が走る**
+ * （[onModeClick]。文字コードの札と同じ作り）。
  */
 class StatusBarView(context: Context) : LinearLayout(context) {
 
@@ -38,6 +41,16 @@ class StatusBarView(context: Context) : LinearLayout(context) {
     /** 文字コードの札を押した時に走らせるもの。 */
     var onCharsetClick: (() -> Unit)? = null
 
+    /** タブのモード名の札。文字コードの札と同じく、指で押す札なので当たり判定を広く取る。 */
+    private val mode = label().apply {
+        setPadding(dp(16), dp(3), dp(16), dp(3))
+        isClickable = true
+        setOnClickListener { onModeClick?.invoke() }
+    }
+
+    /** モード名の札を押した時に走らせるもの。 */
+    var onModeClick: (() -> Unit)? = null
+
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
@@ -46,6 +59,9 @@ class StatusBarView(context: Context) : LinearLayout(context) {
         addView(left, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
         addView(View(context), LayoutParams(0, 1, 1f))
         addView(right, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+        addView(mode, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+            marginStart = dp(8)
+        })
         addView(charset, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
             marginStart = dp(8)
         })
@@ -56,6 +72,12 @@ class StatusBarView(context: Context) : LinearLayout(context) {
         right.text = attributes
         // 読み上げでは1続きで聞けるように、全体の説明を1つにまとめる。
         contentDescription = "$state · $attributes"
+    }
+
+    /** モード名の札（「コード」「ワープロ・縦/横」）。 */
+    fun showMode(label: String) {
+        mode.text = label
+        mode.contentDescription = "モード $label"
     }
 
     /** 文字コードの札。**押せない時は薄くして押せなくする**（無題のタブ。`file.encoding` の available と同じ）。 */
@@ -73,10 +95,12 @@ class StatusBarView(context: Context) : LinearLayout(context) {
         // 札は強調の地から浮かせる ── 押せる物だと見て分かるように、選択の地と本文の文字にする。
         charset.setBackgroundColor(palette.button)
         charset.setTextColor(palette.text)
+        mode.setBackgroundColor(palette.button)
+        mode.setTextColor(palette.text)
     }
 
     /** いま出している文字（左・右・文字コードの札を ` · ` でつないだもの）。試験と計測の記録用。 */
-    val text: CharSequence get() = "${left.text} · ${right.text} · ${charset.text}"
+    val text: CharSequence get() = "${left.text} · ${right.text} · ${mode.text} · ${charset.text}"
 
     private fun label() = TextView(context).apply {
         textSize = 12f

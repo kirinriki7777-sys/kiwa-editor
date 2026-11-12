@@ -208,6 +208,59 @@ class CommandsTest {
     }
 
     @Test
+    fun `モードの切り替えは今のモードを説明に出して実処理を呼ぶ`() {
+        val host = FakeCommandHost(wp = true)
+        val commands = Commands.build(host)
+        assertEquals("今: ワープロ", commands["view.mode"].detail)
+        assertEquals("今: コード", Commands.build(FakeCommandHost(wp = false))["view.mode"].detail)
+        assertTrue(commands["view.mode"].available)
+        commands["view.mode"].run()
+        assertEquals(listOf("toggleMode"), host.calls)
+    }
+
+    @Test
+    fun `集中する はワープロのタブでだけ押せる`() {
+        val wp = FakeCommandHost(wp = true)
+        val commands = Commands.build(wp)
+        assertTrue(commands["view.focus"].available)
+        commands["view.focus"].run()
+        assertEquals(listOf("enterFocus"), wp.calls)
+        assertFalse(Commands.build(FakeCommandHost(wp = false))["view.focus"].available)
+    }
+
+    @Test
+    fun `前の版を開く はワープロのタブでだけ押せる`() {
+        val wp = FakeCommandHost(wp = true)
+        val commands = Commands.build(wp)
+        assertTrue(commands["file.previous"].available)
+        commands["file.previous"].run()
+        assertEquals(listOf("openPreviousVersion"), wp.calls)
+        assertFalse(Commands.build(FakeCommandHost(wp = false))["file.previous"].available)
+    }
+
+    @Test
+    fun `縦書き はワープロのタブでだけ押せる`() {
+        val wp = FakeCommandHost(wp = true, vertical = false)
+        val commands = Commands.build(wp)
+        assertEquals("縦書き", commands["view.vertical"].label)
+        assertEquals("縦書き", commands["view.vertical"].title)
+        assertTrue(commands["view.vertical"].available)
+        assertEquals("今: 横", commands["view.vertical"].detail)
+        commands["view.vertical"].run()
+        assertEquals(listOf("toggleVertical"), wp.calls)
+
+        wp.vertical = true
+        assertEquals("今: 縦", commands["view.vertical"].detail)
+        // メニューに出す名前は切り替え先。表と結ぶ名前（label）は替わらない。
+        assertEquals("横書き", commands["view.vertical"].title)
+        assertEquals("縦書き", commands["view.vertical"].label)
+
+        val code = FakeCommandHost(wp = false)
+        assertFalse(Commands.build(code)["view.vertical"].available)
+        assertEquals("ワープロのタブで使う", Commands.build(code)["view.vertical"].detail)
+    }
+
+    @Test
     fun `detail は引くたびに今の状態を返す`() {
         assertEquals("今: 折り返す", Commands.build(FakeCommandHost(wrap = true))["view.wrap"].detail)
         assertEquals("今: 折り返さない", Commands.build(FakeCommandHost(wrap = false))["view.wrap"].detail)

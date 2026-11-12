@@ -8,6 +8,7 @@ import dev.kirin.editoradapter.ImeBoundary
 import dev.kirin.editoradapter.TextPosition
 import dev.kirin.editoradapter.TextRange
 import dev.kirin.kiwa.ui.ThemeChoice
+import dev.kirin.kiwa.view.ViewMode
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,6 +57,9 @@ class EditorSettingsTest {
             wrapLineLimit = 500,
             fullscreen = true,
             lineSpacing = 1.6f,
+            wpFont = "serif",
+            wpFontSizeSp = 20f,
+            wpLineSpacing = 2.0f,
             cursorBlink = false,
             highlightMatchingBrackets = false,
             indentGuides = false,
@@ -300,6 +304,7 @@ class EditorSettingsTest {
         assertEquals(true, engine.seenPinLineNumbers)
         assertEquals(false, engine.seenAutoClosePairs)
         assertEquals(false, engine.seenAutoIndent)
+        assertEquals(false, engine.seenVertical)
     }
 
     @Test
@@ -340,6 +345,111 @@ class EditorSettingsTest {
         assertTrue(small.seenWordWrap)
     }
 
+    // ------------------------------------------------------------------
+    // ワープロのモード
+    // ------------------------------------------------------------------
+
+    @Test
+    fun `ワープロ用の既定はゴシックでコードと同じ大きさ、行間1_6`() {
+        val defaults = EditorSettings()
+        assertEquals("sans", defaults.wpFont)
+        assertEquals(defaults.fontSizeSp, defaults.wpFontSizeSp, 0.0001f)
+        assertEquals(1.6f, defaults.wpLineSpacing, 0.0001f)
+    }
+
+    @Test
+    fun `ワープロ用の書体と大きさと行間は保存して読み戻せる`() {
+        val settings = EditorSettings(wpFont = "serif", wpFontSizeSp = 22f, wpLineSpacing = 1.8f)
+        val back = EditorSettings.fromJson(settings.toJson())
+        assertEquals("serif", back.wpFont)
+        assertEquals(22f, back.wpFontSizeSp, 0.0001f)
+        assertEquals(1.8f, back.wpLineSpacing, 0.0001f)
+    }
+
+    @Test
+    fun `ワープロ用の値が無い古い設定は既定で埋まり、壊れた値は丸める`() {
+        val old = EditorSettings.fromJson(JSONObject("""{"fontSizeSp":18}"""))
+        assertEquals("sans", old.wpFont)
+        assertEquals(1.6f, old.wpLineSpacing, 0.0001f)
+
+        val broken = EditorSettings.fromJson(
+            JSONObject("""{"wpFont":"comic","wpFontSizeSp":900,"wpLineSpacing":0.1}""")
+        )
+        assertEquals("sans", broken.wpFont)
+        assertEquals(48f, broken.wpFontSizeSp, 0.001f)
+        assertEquals(1f, broken.wpLineSpacing, 0.0001f)
+    }
+
+    @Test
+    fun `ワープロのタブはコードの飾りを消して、ワープロ用の字を使う`() {
+        val engine = RecordingEngine()
+        EditorSettings(
+            fontSizeSp = 14f, font = "monospace", lineSpacing = 1.0f,
+            wpFont = "serif", wpFontSizeSp = 20f, wpLineSpacing = 1.8f
+        ).applyTo(engine, EditorTheme.SUMI, EditorSettings.Document("kotlin", "\n", ViewMode.WORDPROCESSOR))
+
+        assertEquals(20f, engine.seenTextSize, 0.001f)
+        assertEquals("serif", engine.seenFont)
+        assertEquals(1.8f, engine.seenLineSpacing!!, 0.0001f)
+        assertEquals(false, engine.seenLineNumbers)
+        assertEquals(false, engine.seenCurrentLine)
+        assertEquals(false, engine.seenIndentGuides)
+        assertEquals(false, engine.seenStickyScroll)
+        assertEquals(false, engine.seenMatchingBrackets)
+        assertNull("言語を選ばない素の文字", engine.seenLanguage)
+        assertEquals(true, engine.seenTypewriter)
+        assertTrue("折り返しは入る", engine.seenWordWrap)
+        assertEquals(false, engine.seenVertical)
+
+        // ワープロで vertical を指定した時だけ有効になる
+        EditorSettings().applyTo(engine, EditorTheme.SUMI, EditorSettings.Document("kotlin", "\n", ViewMode.WORDPROCESSOR, vertical = true))
+        assertEquals(true, engine.seenVertical)
+
+        // コードモードでは vertical が true でも無視されて false になる（コードに縦描画が漏れない）
+        EditorSettings().applyTo(engine, EditorTheme.SUMI, EditorSettings.Document("kotlin", "\n", ViewMode.CODE, vertical = true))
+        assertEquals(false, engine.seenVertical)
+    }
+
+    @Test
+    fun `コードのタブはコードの設定のまま、タイプライターは切れる`() {
+        val engine = RecordingEngine()
+        EditorSettings(fontSizeSp = 14f, font = "monospace", lineSpacing = 1.0f, wpFont = "serif")
+            .applyTo(engine, EditorTheme.SUMI, EditorSettings.Document("kotlin", "\n", ViewMode.CODE))
+
+        assertEquals(14f, engine.seenTextSize, 0.001f)
+        assertEquals("monospace", engine.seenFont)
+        assertEquals(1.0f, engine.seenLineSpacing!!, 0.0001f)
+        assertEquals(true, engine.seenLineNumbers)
+        assertEquals("kotlin", engine.seenLanguage)
+        assertEquals(false, engine.seenTypewriter)
+        assertFalse("コードの折り返しは設定に従う", engine.seenWordWrap)
+    }
+
+    @Test
+    fun `モードを替えて入れ直すと見た目が行き来する`() {
+        val engine = RecordingEngine()
+        val settings = EditorSettings()
+        settings.applyTo(engine, EditorTheme.SUMI, EditorSettings.Document("kotlin", "\n", ViewMode.WORDPROCESSOR))
+        assertEquals(false, engine.seenLineNumbers)
+        settings.applyTo(engine, EditorTheme.SUMI, EditorSettings.Document("kotlin", "\n", ViewMode.CODE))
+        assertEquals(true, engine.seenLineNumbers)
+        assertEquals("kotlin", engine.seenLanguage)
+    }
+
+    /** 上限を超えたファイルでは、ワープロでも折り返しを切る（今の動きのまま。上限は外さない）。 */
+    @Test
+    fun `ワープロでも行数が上限を超えたら折り返しは切れる`() {
+        val over = RecordingEngine(lines = 3000)
+        EditorSettings(wrapLineLimit = 2000)
+            .applyTo(over, EditorTheme.SUMI, EditorSettings.Document(null, "\n", ViewMode.WORDPROCESSOR))
+        assertFalse(over.seenWordWrap)
+
+        val within = RecordingEngine(lines = 100)
+        EditorSettings(wrapLineLimit = 2000)
+            .applyTo(within, EditorTheme.SUMI, EditorSettings.Document(null, "\n", ViewMode.WORDPROCESSOR))
+        assertTrue(within.seenWordWrap)
+    }
+
     /**
      * 何を渡されたかを覚えるだけのエンジン。
      *
@@ -368,6 +478,8 @@ class EditorSettingsTest {
         var seenPinLineNumbers: Boolean? = null
         var seenAutoClosePairs: Boolean? = null
         var seenAutoIndent: Boolean? = null
+        var seenTypewriter: Boolean? = null
+        var seenVertical: Boolean? = null
 
         override fun asView() = throw UnsupportedOperationException()
         override fun getText(): CharSequence = text
@@ -404,6 +516,8 @@ class EditorSettingsTest {
         override fun setIndentGuides(enabled: Boolean) { seenIndentGuides = enabled }
         override fun setStickyScroll(enabled: Boolean) { seenStickyScroll = enabled }
         override fun setPinLineNumbers(pinned: Boolean) { seenPinLineNumbers = pinned }
+        override fun setTypewriter(enabled: Boolean) { seenTypewriter = enabled }
+        override fun setVertical(enabled: Boolean) { seenVertical = enabled }
         override fun ime(): ImeBoundary = throw UnsupportedOperationException()
 
         // 検索は設定の適用に関わらない（`applyTo` は触らない）。
@@ -411,6 +525,7 @@ class EditorSettingsTest {
 
         // 文書（タブ）と変更の合図は設定の適用に関わらないので、ここでは動かない札を返す。
         override fun newDocument(text: CharSequence): EditorDocument = object : EditorDocument {}
+        override fun textOf(document: EditorDocument): CharSequence = throw UnsupportedOperationException()
         override fun showDocument(document: EditorDocument) = throw UnsupportedOperationException()
         override fun forgetDocument(document: EditorDocument) = throw UnsupportedOperationException()
         override fun setOnChangeListener(listener: Runnable?) = throw UnsupportedOperationException()

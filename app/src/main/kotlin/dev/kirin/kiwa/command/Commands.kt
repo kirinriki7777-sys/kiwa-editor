@@ -69,9 +69,10 @@ class Commands private constructor(val all: List<Command>) {
                 barLabel: String? = null,
                 detail: () -> String = { "" },
                 available: () -> Boolean = { true },
+                title: (() -> String)? = null,
                 run: () -> Unit
             ) {
-                out.add(Command(id, label, group, barLabel, detail, available, run, planned = false))
+                out.add(Command(id, label, group, barLabel, detail, available, run, planned = false, titleOf = title))
             }
 
             /** まだ作っていないもの。押すと「まだ作っていない」と出る。 */
@@ -107,6 +108,11 @@ class Commands private constructor(val all: List<Command>) {
             command("file.encoding", "文字コード", CommandGroup.FILE,
                 detail = { "今: ${host.charsetLabel()}" },
                 available = { host.activeFileName() != null }) { host.chooseEncoding() }
+
+            // ワープロのタブが上書きする前の版（1世代）を、無題の新しいタブへ開く。
+            command("file.previous", "前の版を開く", CommandGroup.FILE,
+                detail = { if (host.wordProcessor()) "" else "ワープロのタブで使う" },
+                available = { host.wordProcessor() }) { host.openPreviousVersion() }
 
             // ---- 編集 ----
             command("edit.undo", "戻す", CommandGroup.EDIT,
@@ -145,6 +151,19 @@ class Commands private constructor(val all: List<Command>) {
             // **このタブだけ**の言語（U3）。設定の「拡張子 → 言語」とは別物で、タブを閉じれば消える。
             command("view.language", "言語を選ぶ", CommandGroup.VIEW,
                 detail = { "今: ${host.languageLabel()}" }) { host.chooseLanguage() }
+            // タブごとの見せ方（コード / ワープロ）。**ステータスバーのモード名を押しても同じこれが走る。**
+            command("view.mode", "モードを切り替える", CommandGroup.VIEW,
+                detail = { "今: ${host.modeLabel()}" }) { host.toggleMode() }
+            // 書くことだけに向かう画面。ワープロのタブでだけ入れる。
+            command("view.focus", "集中する", CommandGroup.VIEW,
+                detail = { if (host.wordProcessor()) "" else "ワープロのタブで使う" },
+                available = { host.wordProcessor() }) { host.enterFocus() }
+            // ワープロのタブでの縦書き表示・編集の切り替え。メニューには切り替え先を出す
+            // （横の時は「縦書き」、縦の時は「横書き」）。
+            command("view.vertical", "縦書き", CommandGroup.VIEW,
+                detail = { if (host.wordProcessor()) (if (host.isVertical()) "今: 縦" else "今: 横") else "ワープロのタブで使う" },
+                available = { host.wordProcessor() },
+                title = { if (host.isVertical()) "横書き" else "縦書き" }) { host.toggleVertical() }
             // **入口も表から生やす。** バーの欄が表を通さずにパレットを開くと、
             // 「バーからは開くのに >palette では開かない」が生まれる。
             command("view.palette", "コマンドパレット", CommandGroup.VIEW, barLabel = "⌘",
@@ -180,7 +199,7 @@ enum class CommandGroup(val label: String) {
 /**
  * コマンド1本。
  *
- * [label] は静的、[detail] と [available] は**引くたびに評価する** ──
+ * [label] は静的（表と結ぶ名前）、[detail]・[available]・[title] は**引くたびに評価する** ──
  * 「折り返し（今: 折り返す）」のように状態を出すものがあり、
  * 表を作り直さずに最新を出せる形にしてある。
  */
@@ -194,8 +213,12 @@ class Command internal constructor(
     private val availableOf: () -> Boolean,
     private val action: () -> Unit,
     /** まだ実装が無い。押すと「まだ作っていない」と出るだけ。 */
-    val planned: Boolean
+    val planned: Boolean,
+    private val titleOf: (() -> String)? = null
 ) {
+    /** メニューとパレットに出す名前。状態で名前が替わるもの（縦書き ↔ 横書き）だけが [label] と違う。 */
+    val title: String get() = titleOf?.invoke() ?: label
+
     /**
      * バーに出す文字。狭いので「ファイルツリー」ではなく「☰」を出す、のような差を吸収する。
      * **記号キー列（E12）も同じ名前を引く** ── 狭い場所は全部ここを見るので、短い名前は1つで済む。
@@ -248,6 +271,18 @@ interface CommandActions {
 
     /** 今のファイルを別の文字コードで開き直す、または別の文字コードで保存する（2026-10-02）。 */
     fun chooseEncoding()
+
+    /** 今のタブの、上書きする前の版を無題の新しいタブに開く（ワープロのタブ）。無ければ「前の版は無い」。 */
+    fun openPreviousVersion()
+
+    /** 今のタブをコード ↔ ワープロに切り替える。本文・取り消しの履歴・カーソルは変えない。 */
+    fun toggleMode()
+
+    /** ワープロのタブを縦書き ↔ 横書きに切り替える。 */
+    fun toggleVertical()
+
+    /** 集中の画面に入る（ワープロのタブ）。メニュー・タブ列・記号キー・ステータスバーを消す。 */
+    fun enterFocus()
 
     /** パレットを空で開く。 */
     fun openPalette()
@@ -322,5 +357,14 @@ interface CommandContext {
     fun charsetLabel(): String
     fun drawerOpen(): Boolean
     fun wordWrap(): Boolean
+
+    /** 今のタブのモード名（「コード」「ワープロ」）。 */
+    fun modeLabel(): String
+
+    /** 今のタブがワープロか。 */
+    fun wordProcessor(): Boolean
+
+    /** 今のタブが縦書き表示か（ワープロタブのみ）。 */
+    fun isVertical(): Boolean
     fun hasTrace(): Boolean
 }

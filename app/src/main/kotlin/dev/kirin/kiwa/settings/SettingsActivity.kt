@@ -237,6 +237,24 @@ class SettingsActivity : Activity() {
             update(settings.copy(fullscreen = it))
         }
 
+        section("ワープロ")
+        note("ワープロのモード（.txt を開いた時の既定）の字。コードとは別に持つ。行番号・色付け・記号キーの列は出ない")
+        number("文字の大きさ", "${settings.wpFontSizeSp.toInt()} sp") {
+            askNumber("ワープロの文字の大きさ（sp）", settings.wpFontSizeSp.toInt(), 6, 48) {
+                update(settings.copy(wpFontSizeSp = it.toFloat()))
+            }
+        }
+        pick("書体", EditorSettings.FONTS.firstOrNull { it.first == settings.wpFont }?.second ?: settings.wpFont) {
+            askChoice("ワープロの書体", EditorSettings.FONTS.map { it.second }) { index ->
+                update(settings.copy(wpFont = EditorSettings.FONTS[index].first))
+            }
+        }
+        pick("行の高さ", spacingLabel(settings.wpLineSpacing)) {
+            askChoice("ワープロの行の高さ", EditorSettings.LINE_SPACINGS.map { spacingLabel(it) }) { index ->
+                update(settings.copy(wpLineSpacing = EditorSettings.LINE_SPACINGS[index]))
+            }
+        }
+
         section("編集")
         number("インデントの幅", "${settings.indentWidth} 桁") {
             askNumber("インデントの幅（桁）", settings.indentWidth, 1, 16) {

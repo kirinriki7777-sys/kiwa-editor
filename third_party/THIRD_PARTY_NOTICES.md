@@ -126,7 +126,18 @@ These files are byte-identical to those in the Sora Editor 0.24.6 sample app. On
 current VS Code files (they are older revisions), so the exact revision they were taken from is not known.
 `languages.json` (the table that maps languages to these files) was written for Kiwa.
 
-## 3. Original works of the Kiwa project
+## 3. Code adapted from other projects
+
+| Name | Where | Source | License | Copyright |
+|---|---|---|---|---|
+| MMTextKit | `engine-sora/src/main/kotlin/dev/kirin/kiwa/engine/sora/VerticalLayout.kt` and the vertical drawing and input handling in `KiwaCodeEditor.kt` | https://github.com/lzdev42/MMTextKit @ fa0bf1165dcf452eba3bce2a7951441ff3048b0d (`VTextField.kt`, `VerticalText.kt`) | MIT | Copyright (c) 2026 lzdev42 |
+
+Kiwa's vertical writing view follows MMTextKit's approach: the input component is kept as it is, and
+drawing, touch-coordinate conversion and key remapping are attached separately. No file of MMTextKit is
+included; the code was rebuilt for Android View / Canvas. The license notice is also kept at the top of
+`VerticalLayout.kt`.
+
+## 4. Original works of the Kiwa project
 
 | Name | License | Notes |
 |---|---|---|

@@ -136,4 +136,11 @@ public interface ImeBoundary {
      * 二重に持つと必ず食い違う。<b>読むだけ</b>にする。
      */
     TextRange composingRange();
+
+    /**
+     * 保存する本文。
+     *
+     * <p>安全な保存本文を決められないcomposing中はnull、composing終了後は表示本文。
+     */
+    String settledText();
 }

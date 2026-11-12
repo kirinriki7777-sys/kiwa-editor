@@ -28,6 +28,10 @@ echo "=== 設定 ==="
 if "$ROOT/tools/check-settings.sh"; then :; else miss=$((miss + 1)); fi
 echo
 
+echo "=== 保存経路 ==="
+if "$ROOT/tools/check-save-paths.sh"; then :; else miss=$((miss + 1)); fi
+echo
+
 echo "=== 操作 ==="
 if "$ROOT/tools/check-commands.sh"; then :; else miss=$((miss + 1)); fi
 echo

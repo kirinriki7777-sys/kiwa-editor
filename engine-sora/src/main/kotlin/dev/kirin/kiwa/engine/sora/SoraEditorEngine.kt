@@ -91,6 +91,8 @@ internal class SoraEditorEngine(context: Context, trace: ImeTrace?) : EditorEngi
 
     override fun newDocument(text: CharSequence): EditorDocument = SoraDocument(Content(text))
 
+    override fun textOf(document: EditorDocument): CharSequence = (document as SoraDocument).content
+
     override fun showDocument(document: EditorDocument) {
         val next = document as SoraDocument
         val previous = shown
@@ -320,6 +322,10 @@ internal class SoraEditorEngine(context: Context, trace: ImeTrace?) : EditorEngi
         editor.setWordwrap(enabled)
     }
 
+    override fun setVertical(enabled: Boolean) {
+        editor.setVertical(enabled)
+    }
+
     override fun setLineSpacing(multiplier: Float) {
         // 1 未満にすると行が重なる。上は 3 倍で止める（それ以上は1画面に数行しか残らない）。
         editor.lineSpacingMultiplier = multiplier.coerceIn(1f, 3f)
@@ -359,6 +365,10 @@ internal class SoraEditorEngine(context: Context, trace: ImeTrace?) : EditorEngi
 
     override fun setPinLineNumbers(pinned: Boolean) {
         editor.setPinLineNumber(pinned)
+    }
+
+    override fun setTypewriter(enabled: Boolean) {
+        editor.typewriter = enabled
     }
 
     override fun ime(): ImeBoundary = boundary

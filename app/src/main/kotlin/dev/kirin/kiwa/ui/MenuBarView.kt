@@ -188,12 +188,12 @@ class MenuBarView(
             isClickable = available
             isFocusable = available
             alpha = if (available) 1f else DIMMED
-            contentDescription = command.label
+            contentDescription = command.title
             setOnClickListener { onPick() }
             setOnFocusChangeListener { v, has -> v.setBackgroundColor(if (has) palette.button else 0) }
         }
         row.addView(TextView(context).apply {
-            text = command.label
+            text = command.title
             textSize = 15f
             setTextColor(palette.text)
         }, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
